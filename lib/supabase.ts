@@ -254,6 +254,10 @@ export const db = {
 
   contentClips: {
     list: () => sbGet<ContentClip>("content_clips", { select: "*", order: "created_at.desc" }),
+    insert: (data: Omit<ContentClip, "id" | "created_at">) =>
+      sbPost<ContentClip>("content_clips", data),
+    update: (id: string, patch: Partial<ContentClip>) =>
+      sbPatch<ContentClip>("content_clips", id, patch),
   },
 
   experiments: {

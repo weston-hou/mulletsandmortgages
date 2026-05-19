@@ -632,10 +632,148 @@ function Dashboard({ adminKey }: { adminKey: string }) {
                 </div>
               )}
             </section>
+
+            {/* ── Video upload ── */}
+            <VideoUploadSection adminKey={adminKey} />
           </>
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Video upload section ─────────────────────────────────────────────────────
+
+function VideoUploadSection({ adminKey }: { adminKey: string }) {
+  const [slug, setSlug] = useState("");
+  const [notes, setNotes] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState<{ folder_url: string; files: { name: string; url: string }[] } | null>(null);
+  const [error, setError] = useState("");
+
+  const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files ?? []).slice(0, 3);
+    setFiles(selected);
+    setResult(null);
+    setError("");
+  };
+
+  const handleUpload = async () => {
+    if (!files.length || !slug.trim()) return;
+    setUploading(true);
+    setError("");
+    setResult(null);
+    try {
+      const fd = new FormData();
+      files.forEach(f => fd.append("files[]", f));
+      fd.append("campaign_slug", slug.trim());
+      fd.append("notes", notes.trim());
+      const res = await fetch("/api/content/upload", {
+        method: "POST",
+        headers: { "X-Admin-Key": adminKey },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      setResult(data);
+      setFiles([]);
+      setSlug("");
+      setNotes("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <section>
+      <h2 className="text-white font-bold text-lg mb-4">Upload Video</h2>
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-2xl">
+        <p className="text-zinc-500 text-sm mb-5">
+          Upload up to 3 camera angles. Files go straight to Google Drive and a content clip entry is created automatically.
+        </p>
+
+        {/* Slug */}
+        <div className="mb-4">
+          <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Campaign slug <span className="text-zinc-600">(e.g. ep-12-first-time-buyers)</span></label>
+          <input
+            type="text"
+            value={slug}
+            onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+            placeholder="ep-12-first-time-buyers"
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400 font-mono"
+          />
+        </div>
+
+        {/* File picker */}
+        <div className="mb-4">
+          <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Video files <span className="text-zinc-600">(up to 3 cameras)</span></label>
+          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-zinc-700 rounded-xl cursor-pointer hover:border-amber-400/40 transition-colors bg-zinc-800/50">
+            <input type="file" multiple accept="video/*" onChange={handleFiles} className="hidden" />
+            {files.length === 0 ? (
+              <>
+                <span className="text-2xl mb-1">🎬</span>
+                <span className="text-zinc-400 text-sm">Click to select video files</span>
+                <span className="text-zinc-600 text-xs mt-1">MP4, MOV, up to 3 files</span>
+              </>
+            ) : (
+              <div className="text-center px-4">
+                {files.map((f, i) => (
+                  <div key={i} className="text-sm text-white">
+                    📹 Cam {i + 1}: <span className="text-zinc-400">{f.name}</span>
+                    <span className="text-zinc-600 ml-2">({(f.size / 1024 / 1024).toFixed(1)} MB)</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </label>
+        </div>
+
+        {/* Notes */}
+        <div className="mb-5">
+          <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Notes <span className="text-zinc-600">(optional — topic, guest, anything relevant)</span></label>
+          <textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            rows={2}
+            placeholder="Covered first-time buyer programs, VA loans, down payment assistance..."
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400 resize-none placeholder-zinc-600"
+          />
+        </div>
+
+        {/* Error */}
+        {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+
+        {/* Success */}
+        {result && (
+          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mb-4">
+            <p className="text-green-400 text-sm font-semibold mb-2">✓ Uploaded successfully</p>
+            <div className="space-y-1">
+              {result.files.map(f => (
+                <a key={f.name} href={f.url} target="_blank" rel="noopener noreferrer"
+                  className="block text-xs text-amber-400 hover:underline">
+                  📄 {f.name} →
+                </a>
+              ))}
+              <a href={result.folder_url} target="_blank" rel="noopener noreferrer"
+                className="block text-xs text-zinc-400 hover:text-white mt-1">
+                📂 Open Drive folder →
+              </a>
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={handleUpload}
+          disabled={uploading || !files.length || !slug.trim()}
+          className="w-full py-3 rounded-xl bg-amber-400 text-black font-bold text-sm hover:bg-amber-300 transition-colors disabled:opacity-40"
+        >
+          {uploading ? "Uploading to Drive…" : "Upload to Drive →"}
+        </button>
+      </div>
+    </section>
   );
 }
 
