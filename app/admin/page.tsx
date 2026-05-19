@@ -648,7 +648,7 @@ function Dashboard({ adminKey }: { adminKey: string }) {
             </section>
 
             {/* ── Video upload ── */}
-            <VideoUploadSection adminKey={adminKey} />
+            {/* VideoUploadSection removed — Zach uploads directly to Google Drive */}
           </>
         )}
       </div>
