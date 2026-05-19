@@ -20,6 +20,10 @@ export const metadata: Metadata = {
     description: "Business in the front, savings in the back.",
   },
   metadataBase: new URL("https://mulletsandmortgages.com"),
+  icons: {
+    icon:  [{ url: "/favicon.ico" }, { url: "/icon.png", type: "image/png", sizes: "512x512" }],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
+  },
 };
 
 // Replace NEXT_PUBLIC_POSTHOG_KEY with your real PostHog project API key
