@@ -352,6 +352,12 @@ function Dashboard({ adminKey }: { adminKey: string }) {
             ↻ Refresh
           </button>
           <a
+            href="/admin/experiments"
+            className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors"
+          >
+            🧪 A/B
+          </a>
+          <a
             href="/"
             className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors"
           >

@@ -155,7 +155,7 @@ export interface ContentClip {
 
 // ─── Client ──────────────────────────────────────────────────────────────────
 
-function getConfig() {
+export function getConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
@@ -275,6 +275,9 @@ export const db = {
       });
       return rows[0] ?? null;
     },
+    list: () => sbGet<Experiment>("experiments", { select: "*", order: "created_at.desc" }),
+    insert: (data: Omit<Experiment, "id" | "created_at">) => sbPost<Experiment>("experiments", data),
+    update: (id: string, patch: Partial<Experiment>) => sbPatch<Experiment>("experiments", id, patch),
   },
 
   followupSchedule: {
