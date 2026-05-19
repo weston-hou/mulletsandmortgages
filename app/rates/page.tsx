@@ -4,13 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { track } from "@/lib/analytics";
 
-// Placeholder rate cards — replace with live Optimal Blue API response
-const PLACEHOLDER_RATES = [
-  { lender: "Best Available Rate", rate: "6.375%", apr: "6.512%", type: "30-yr Fixed", payment: "—", points: "0", highlight: true },
-  { lender: "Low Points Option", rate: "6.500%", apr: "6.621%", type: "30-yr Fixed", payment: "—", points: "0", highlight: false },
-  { lender: "15-Year Option", rate: "5.875%", apr: "5.991%", type: "15-yr Fixed", payment: "—", points: "0", highlight: false },
-  { lender: "ARM Option", rate: "5.750%", apr: "6.134%", type: "7/1 ARM", payment: "—", points: "0", highlight: false },
-];
+import type { RateCard } from "@/app/api/rates/route";
 
 // ─── Price range → numeric bounds ────────────────────────────────────────────
 
@@ -60,11 +54,28 @@ function RatesContent() {
   const zip = params.get("zip") ?? "";
   const propertyType = params.get("type") ?? "";
 
-  const [obReady] = useState(false); // flip to true when OB credentials are configured
+  const [cards, setCards]     = useState<RateCard[]>([]);
+  const [ratesLoading, setRatesLoading] = useState(true);
+  const [asOf, setAsOf]       = useState("");
 
   useEffect(() => {
     track("rates_page_viewed", { purpose, price, credit, state, zip, property_type: propertyType });
   }, [purpose, price, credit, state, zip, propertyType]);
+
+  useEffect(() => {
+    const q = new URLSearchParams();
+    if (purpose) q.set("purpose", purpose);
+    if (price)   q.set("price",   price);
+    if (credit)  q.set("credit",  credit);
+    fetch(`/api/rates?${q}`)
+      .then(r => r.json())
+      .then(data => {
+        setCards(data.cards ?? []);
+        setAsOf(data.as_of ?? "");
+      })
+      .catch(() => {})
+      .finally(() => setRatesLoading(false));
+  }, [purpose, price, credit]);
 
   return (
     <main className="min-h-screen gradient-bg flex flex-col">
@@ -104,41 +115,67 @@ function RatesContent() {
         </div>
 
         {/* Rate cards */}
-        <div className="space-y-3 mb-10 animate-slide-up delay-100" style={{ opacity: 0 }}>
-          {!obReady && (
-            <div className="bg-amber-400/10 border border-amber-400/20 rounded-xl px-4 py-3 text-amber-400 text-sm flex items-center gap-2 mb-4">
-              <span>⚡</span>
-              <span>Live rates from 150+ lenders loading soon — Zach will personally send your exact options within the hour.</span>
+        <div className="space-y-3 mb-10">
+          {ratesLoading ? (
+            <div className="space-y-3">
+              {[1,2,3].map(i => (
+                <div key={i} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 animate-pulse">
+                  <div className="h-8 bg-zinc-800 rounded w-24 mb-2" />
+                  <div className="h-4 bg-zinc-800 rounded w-40" />
+                </div>
+              ))}
             </div>
-          )}
-
-          {PLACEHOLDER_RATES.map((r) => (
-            <div
-              key={r.type + r.rate}
-              onClick={() => track("rate_card_clicked", { rate: r.rate, type: r.type })}
-              className={`rounded-xl border p-4 sm:p-5 transition-all duration-200 cursor-pointer ${
-                r.highlight
-                  ? "border-amber-400/40 bg-amber-400/5 card-glow"
-                  : "border-zinc-700 bg-zinc-900/60 hover:border-zinc-600"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  {r.highlight && (
-                    <div className="inline-flex items-center gap-1 bg-amber-400/20 text-amber-400 text-xs font-bold px-2 py-0.5 rounded-full mb-2">
-                      ⭐ Best Match
+          ) : (
+            <>
+              {asOf && (
+                <div className="text-xs text-zinc-600 mb-3">
+                  Market rates as of {new Date(asOf).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Personalized to your credit &amp; scenario
+                </div>
+              )}
+              {cards.map((r) => (
+                <div
+                  key={r.type}
+                  onClick={() => track("rate_card_clicked", { rate: r.rate, type: r.type })}
+                  className={`rounded-xl border p-4 sm:p-5 transition-all duration-200 cursor-pointer ${
+                    r.highlight
+                      ? "border-amber-400/40 bg-amber-400/5 card-glow"
+                      : "border-zinc-700 bg-zinc-900/60 hover:border-zinc-600"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      {r.badge && (
+                        <div className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full mb-2 ${
+                          r.highlight
+                            ? "bg-amber-400/20 text-amber-400"
+                            : "bg-zinc-800 text-zinc-400"
+                        }`}>
+                          {r.highlight && "⭐ "}{r.badge}
+                        </div>
+                      )}
+                      <div className="text-3xl font-black text-white">{r.rate.toFixed(3)}%</div>
+                      <div className="text-zinc-400 text-sm mt-0.5">
+                        {r.type} · APR {r.apr.toFixed(3)}%
+                        {r.note && <span className="text-zinc-600 ml-1">({r.note})</span>}
+                      </div>
                     </div>
-                  )}
-                  <div className="text-3xl font-black text-white">{r.rate}</div>
-                  <div className="text-zinc-400 text-sm mt-0.5">{r.type} · APR {r.apr}</div>
+                    <div className="text-right flex-shrink-0">
+                      {r.payment && (
+                        <>
+                          <div className="text-zinc-500 text-xs">Est. payment</div>
+                          <div className="text-white font-semibold">${r.payment.toLocaleString()}/mo</div>
+                        </>
+                      )}
+                      <div className="text-zinc-600 text-xs mt-1">{r.points} pts</div>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-zinc-500 text-xs">Points</div>
-                  <div className="text-white font-semibold">{r.points}</div>
-                </div>
-              </div>
-            </div>
-          ))}
+              ))}
+              <p className="text-xs text-zinc-700 mt-3 leading-relaxed">
+                Rates shown are indicative based on current market benchmarks. Actual rate depends on full credit review and lender pricing. Not a commitment to lend.
+              </p>
+            </>
+          )}
         </div>
 
         {/* CTA — Apply / Talk to Zach */}
