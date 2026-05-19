@@ -39,6 +39,7 @@ export default function Home() {
     email: "",
     phone: "",
   });
+  const [smsConsent, setSmsConsent] = useState(false);
 
   // Capture UTM + tracking context on mount
   useEffect(() => {
@@ -82,10 +83,10 @@ export default function Home() {
     });
     track("lead_submitted", { ...form });
 
-    // POST to /api/leads to persist in Supabase
+    // POST to /api/leads to persist in Supabase, then trigger SMS agent
     try {
       const trackingCtx = getTrackingContext();
-      await fetch("/api/leads", {
+      const leadsRes = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -103,6 +104,18 @@ export default function Home() {
           ...trackingCtx,
         }),
       });
+
+      // Trigger SMS agent for new lead (fire-and-forget — non-blocking)
+      if (leadsRes.ok) {
+        const leadData = await leadsRes.json();
+        if (leadData.id) {
+          fetch("/api/agent/sms", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "trigger", lead_id: leadData.id }),
+          }).catch((e) => console.error("SMS trigger failed:", e));
+        }
+      }
     } catch (e) {
       // Non-fatal — still redirect to rates even if Supabase is not configured
       console.error("Failed to persist lead:", e);
@@ -129,7 +142,7 @@ export default function Home() {
   const canAdvanceStep2 =
     form.estimatedPrice && form.creditScore && form.state && form.zip && form.propertyType && form.downPayment;
   const canSubmit =
-    form.firstName && form.lastName && form.email && form.phone;
+    form.firstName && form.lastName && form.email && form.phone && smsConsent;
 
   return (
     <main className="min-h-screen gradient-bg flex flex-col">
@@ -350,6 +363,24 @@ export default function Home() {
                 />
               </div>
 
+              {/* SMS consent checkbox — required by TCPA + Twilio A2P */}
+              <div className="flex items-start gap-3 bg-zinc-800/50 border border-zinc-700 rounded-xl p-3.5">
+                <input
+                  id="sms-consent"
+                  type="checkbox"
+                  checked={smsConsent}
+                  onChange={(e) => {
+                    setSmsConsent(e.target.checked);
+                    track("sms_consent_checked", { checked: e.target.checked });
+                  }}
+                  className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-zinc-900 text-amber-400 accent-amber-400 flex-shrink-0 cursor-pointer"
+                />
+                <label htmlFor="sms-consent" className="text-xs text-zinc-400 leading-relaxed cursor-pointer">
+                  Yes, I agree to receive automated text messages and AI-generated voice calls from Zach Boyko (BrokerBoyko LLC) about my mortgage inquiry.{" "}
+                  <span className="text-zinc-500">Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help or STOP to cancel anytime.</span>
+                </label>
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setStep(2)} className="flex-1 py-3.5 rounded-xl border border-zinc-700 text-zinc-400 font-medium text-sm hover:border-zinc-500 hover:text-white transition-all duration-200">
                   Back
@@ -374,9 +405,9 @@ export default function Home() {
               </div>
 
               <p className="text-xs text-zinc-600 text-center pt-1">
-                By submitting you agree to our{" "}
-                <a href="/privacy" className="text-zinc-500 underline hover:text-zinc-400">privacy policy</a>.
-                {" "}No credit pull. No commitment.
+                <a href="/privacy" className="text-zinc-500 underline hover:text-zinc-400">Privacy Policy</a>
+                {" · "}
+                <a href="/terms" className="text-zinc-500 underline hover:text-zinc-400">Terms of Service</a>
               </p>
             </div>
           )}

@@ -66,6 +66,11 @@ export interface Lead {
   // Zach
   zach_notes?: string;
   assigned_to?: string;
+  // A/B experiment
+  experiment_id?: string;
+  variant?: string;
+  sms_opted_out?: boolean;
+  sms_opted_out_at?: string;
 }
 
 export interface Conversation {
@@ -77,6 +82,43 @@ export interface Conversation {
   body: string;
   ai_generated?: boolean;
   metadata?: Record<string, unknown>;
+}
+
+export interface Experiment {
+  id: string;
+  created_at: string;
+  name: string;
+  active: boolean;
+  variant_a: {
+    channel_order: string[];
+    script_id: string;
+    timing_min: number;
+    timing_max: number;
+  };
+  variant_b: {
+    channel_order: string[];
+    script_id: string;
+    timing_min: number;
+    timing_max: number;
+  };
+  traffic_split: number;
+}
+
+export interface FollowupSchedule {
+  id: string;
+  created_at: string;
+  lead_id: string;
+  scheduled_at: string;
+  channel: "sms" | "voice";
+  stage: string;
+  message_hint?: string;
+  sent: boolean;
+  sent_at?: string;
+  cancelled: boolean;
+  // A/B experiment fields
+  script_id?: string;
+  experiment_id?: string;
+  variant?: string;
 }
 
 export interface ContentClip {
@@ -207,5 +249,39 @@ export const db = {
 
   contentClips: {
     list: () => sbGet<ContentClip>("content_clips", { select: "*", order: "created_at.desc" }),
+  },
+
+  experiments: {
+    getActive: async (): Promise<Experiment | null> => {
+      const rows = await sbGet<Experiment>("experiments", {
+        active: "eq.true",
+        select: "*",
+        order: "created_at.asc",
+        limit: "1",
+      });
+      return rows[0] ?? null;
+    },
+  },
+
+  followupSchedule: {
+    insert: (data: Omit<FollowupSchedule, "id" | "created_at">) =>
+      sbPost<FollowupSchedule>("followup_schedule", data),
+
+    markSent: (id: string) =>
+      sbPatch<FollowupSchedule>("followup_schedule", id, {
+        sent: true,
+        sent_at: new Date().toISOString(),
+      }),
+
+    getDue: async (): Promise<FollowupSchedule[]> => {
+      return sbGet<FollowupSchedule>("followup_schedule", {
+        select: "*",
+        scheduled_at: `lte.${new Date().toISOString()}`,
+        sent: "eq.false",
+        cancelled: "eq.false",
+        order: "scheduled_at.asc",
+        limit: "50",
+      });
+    },
   },
 };
