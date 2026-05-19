@@ -137,9 +137,11 @@ function LoginForm({ onLogin }: { onLogin: (key: string) => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr("");
-    // Validate against the API
-    const res = await fetch("/api/leads?limit=1", {
-      headers: { "X-Admin-Key": pw },
+    // Validate password via dedicated auth endpoint
+    const res = await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pw }),
     });
     if (res.ok) {
       setCookie("admin_session", pw);
@@ -206,35 +208,35 @@ function KanbanCard({ lead }: { lead: Lead }) {
   return (
     <a
       href={`/admin/leads/${lead.id}`}
-      className="block bg-zinc-800 border border-zinc-700 rounded-xl p-3 hover:border-amber-400/40 hover:bg-zinc-700/80 transition-all"
+      className="block bg-zinc-800 border border-zinc-700 rounded-lg p-2 hover:border-amber-400/40 hover:bg-zinc-700/80 transition-all"
     >
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <span className="text-white text-sm font-semibold leading-tight">
+      <div className="flex items-start justify-between gap-1 mb-1.5">
+        <span className="text-white text-xs font-semibold leading-tight truncate">
           {lead.first_name} {lead.last_name}
         </span>
         <span
-          className={`text-xs px-1.5 py-0.5 rounded-md border flex-shrink-0 ${sourceBadge(
+          className={`text-[10px] px-1 py-0.5 rounded border flex-shrink-0 ${sourceBadge(
             lead.utm_source
           )}`}
         >
           {lead.utm_source ?? "direct"}
         </span>
       </div>
-      <div className="text-zinc-400 text-xs">{lead.phone}</div>
+      <div className="text-zinc-400 text-[11px]">{lead.phone}</div>
       {lead.loan_purpose && (
-        <div className="text-zinc-500 text-xs mt-1 truncate">
+        <div className="text-zinc-500 text-[11px] mt-0.5 truncate">
           {lead.loan_purpose}
         </div>
       )}
       {lead.estimated_price && (
-        <div className="text-zinc-500 text-xs">{lead.estimated_price}</div>
+        <div className="text-zinc-500 text-[11px]">{lead.estimated_price}</div>
       )}
-      <div className="flex items-center justify-between mt-2 pt-2 border-t border-zinc-700">
-        <span className="text-zinc-600 text-xs">
+      <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-zinc-700">
+        <span className="text-zinc-600 text-[10px]">
           {daysSince(lead.created_at)}d ago
         </span>
         {lead.prequal_complete && (
-          <span className="text-xs text-green-400">✓ Pre-qual</span>
+          <span className="text-[10px] text-green-400">✓ Pre-qual</span>
         )}
       </div>
     </a>
@@ -385,15 +387,15 @@ function Dashboard({ adminKey }: { adminKey: string }) {
                   {total} leads
                 </span>
               </h2>
-              <div className="overflow-x-auto pb-4">
-                <div className="flex gap-4 min-w-max">
+              <div className="w-full">
+                <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${STAGES.length}, minmax(0, 1fr))` }}>
                   {STAGES.map((stage) => (
-                    <div key={stage} className="w-56 flex-shrink-0">
-                      <div className="flex items-center justify-between mb-2 px-1">
-                        <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+                    <div key={stage} className="min-w-0">
+                      <div className="flex items-center justify-between mb-2 px-0.5">
+                        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide truncate">
                           {STAGE_LABELS[stage]}
                         </span>
-                        <span className="text-xs bg-zinc-800 text-zinc-500 rounded-full px-2 py-0.5">
+                        <span className="text-[10px] bg-zinc-800 text-zinc-500 rounded-full px-1.5 py-0.5 flex-shrink-0 ml-1">
                           {byStage[stage].length}
                         </span>
                       </div>
