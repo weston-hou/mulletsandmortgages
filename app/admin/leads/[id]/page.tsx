@@ -270,16 +270,18 @@ export default function LeadDetailPage({
     if (!smsBody.trim()) return;
     setSending(true);
     try {
-      await fetch("/api/agent/sms", {
+      const res = await fetch("/api/agent/sms", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-Admin-Key": adminKey,
         },
-        body: JSON.stringify({ lead_id: id, message: smsBody }),
+        body: JSON.stringify({ action: "manual_send", lead_id: id, message: smsBody }),
       });
-      setSmsBody("");
-      fetchLead();
+      if (res.ok) {
+        setSmsBody("");
+        fetchLead();
+      }
     } finally {
       setSending(false);
     }

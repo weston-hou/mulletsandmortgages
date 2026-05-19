@@ -576,6 +576,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const body = await req.json();
     const { action, lead_id } = body as { action?: string; lead_id?: string };
 
+    // manual_send and trigger require admin auth
+    if (action === "manual_send" || action === "trigger") {
+      const adminKey = process.env.ADMIN_PASSWORD;
+      if (adminKey && req.headers.get("X-Admin-Key") !== adminKey) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
     if (action === "trigger") {
       if (!lead_id) {
         return NextResponse.json(
@@ -590,8 +598,40 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return await handleSendScheduled();
     }
 
+    // Manual send from admin dashboard (Zach composing directly)
+    if (action === "manual_send") {
+      if (!lead_id || !body.message) {
+        return NextResponse.json(
+          { error: "lead_id and message are required for manual_send" },
+          { status: 400 }
+        );
+      }
+      const lead = await db.leads.getById(lead_id);
+      if (!lead) {
+        return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+      }
+      if (lead.sms_opted_out) {
+        return NextResponse.json({ error: "Lead has opted out of SMS" }, { status: 400 });
+      }
+      const sid = await sendSms(lead.phone, body.message);
+      await db.conversations.insert({
+        lead_id,
+        channel: "sms",
+        direction: "outbound",
+        body: body.message,
+        ai_generated: false,
+        metadata: { twilio_sid: sid, source: "admin_dashboard" },
+      });
+      await db.leads.update(lead_id, {
+        last_contacted_at: new Date().toISOString(),
+        last_contact_channel: "sms",
+        contact_count: (lead.contact_count ?? 0) + 1,
+      });
+      return NextResponse.json({ ok: true, sid });
+    }
+
     return NextResponse.json(
-      { error: "Invalid action. Use 'trigger', 'send_scheduled', or send a Twilio webhook." },
+      { error: "Invalid action. Use 'trigger', 'send_scheduled', 'manual_send', or send a Twilio webhook." },
       { status: 400 }
     );
   } catch (err) {
