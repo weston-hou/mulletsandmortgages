@@ -40,6 +40,12 @@ CREATE TABLE IF NOT EXISTS experiments (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_experiments_active
   ON experiments(active) WHERE active = true;
 
+-- content_clips: Creatomate render output URLs
+ALTER TABLE content_clips ADD COLUMN IF NOT EXISTS render_tiktok_url     TEXT;
+ALTER TABLE content_clips ADD COLUMN IF NOT EXISTS render_instagram_url  TEXT;
+ALTER TABLE content_clips ADD COLUMN IF NOT EXISTS render_youtube_url    TEXT;
+ALTER TABLE content_clips ADD COLUMN IF NOT EXISTS render_linkedin_url   TEXT;
+
 -- Index for signature status (admin filters)
 CREATE INDEX IF NOT EXISTS idx_leads_consent_signed
   ON leads(consent_to_contact_signed_at) WHERE consent_to_contact_signed_at IS NOT NULL;
