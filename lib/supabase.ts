@@ -71,6 +71,11 @@ export interface Lead {
   variant?: string;
   sms_opted_out?: boolean;
   sms_opted_out_at?: string;
+  // Document signatures
+  consent_to_contact_signed_at?: string;
+  consent_to_contact_sign_ip?: string;
+  loan_disclosure_signed_at?: string;
+  loan_disclosure_sign_ip?: string;
 }
 
 export interface Conversation {

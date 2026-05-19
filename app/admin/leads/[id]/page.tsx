@@ -57,6 +57,8 @@ interface Lead {
   contact_count?: number;
   last_contacted_at?: string;
   last_contact_channel?: string;
+  consent_to_contact_signed_at?: string;
+  loan_disclosure_signed_at?: string;
 }
 
 interface Conversation {
@@ -215,6 +217,8 @@ export default function LeadDetailPage({
   const [smsBody, setSmsBody] = useState("");
   const [sending, setSending] = useState(false);
   const [adminKey, setAdminKey] = useState("");
+  const [sendingDoc, setSendingDoc] = useState<string | null>(null);
+  const [docSent, setDocSent] = useState<string | null>(null);
 
   // Editable fields
   const [stage, setStage] = useState<LeadStage>("new");
@@ -246,6 +250,25 @@ export default function LeadDetailPage({
   useEffect(() => {
     if (adminKey) fetchLead();
   }, [adminKey, fetchLead]);
+
+  const handleSendDoc = async (docType: string) => {
+    if (!lead?.email) return;
+    setSendingDoc(docType);
+    try {
+      const res = await fetch("/api/documents/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Key": adminKey },
+        body: JSON.stringify({ lead_id: id, type: docType }),
+      });
+      if (res.ok) {
+        setDocSent(docType);
+        setTimeout(() => setDocSent(null), 4000);
+        fetchLead();
+      }
+    } finally {
+      setSendingDoc(null);
+    }
+  };
 
   const handleSave = async () => {
     if (!lead) return;
@@ -459,6 +482,41 @@ export default function LeadDetailPage({
 
             {/* Pre-qual checklist */}
             <PrequalChecklist lead={lead} />
+
+            {/* Documents */}
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+              <h3 className="text-white font-semibold mb-1">Documents</h3>
+              {!lead.email && (
+                <p className="text-zinc-600 text-xs mb-3">Add an email address to send documents.</p>
+              )}
+              <div className="space-y-2 mt-3">
+                {([
+                  { type: "consent_to_contact", label: "Consent to Contact", signedKey: "consent_to_contact_signed_at" },
+                  { type: "loan_disclosure",    label: "Loan Disclosure",    signedKey: "loan_disclosure_signed_at" },
+                ] as { type: string; label: string; signedKey: keyof typeof lead }[]).map(({ type, label, signedKey }) => {
+                  const signedAt = lead[signedKey] as string | undefined;
+                  return (
+                    <div key={type} className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-sm text-white">{label}</div>
+                        {signedAt ? (
+                          <div className="text-xs text-green-400 mt-0.5">✓ Signed {new Date(signedAt).toLocaleDateString()}</div>
+                        ) : (
+                          <div className="text-xs text-zinc-600 mt-0.5">Not yet signed</div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleSendDoc(type)}
+                        disabled={!lead.email || sendingDoc === type}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 hover:border-amber-400/40 hover:text-white transition-all disabled:opacity-40 flex-shrink-0"
+                      >
+                        {sendingDoc === type ? "Sending…" : docSent === type ? "✓ Sent!" : signedAt ? "Resend" : "Send"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* ── Right column: conversation + SMS ── */}
