@@ -70,6 +70,19 @@ export async function POST(req: NextRequest) {
       posthog_id: posthog_id || undefined,
     });
 
+    // Trigger SMS agent to schedule the first outreach
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://mulletsandmortgages.com";
+      fetch(`${baseUrl}/api/agent/sms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "trigger", lead_id: lead.id }),
+      }).catch(err => console.error("[POST /api/leads] SMS trigger failed:", err));
+    } catch (err) {
+      // Non-fatal — lead is created, SMS will be picked up by cron as fallback
+      console.error("[POST /api/leads] SMS trigger error:", err);
+    }
+
     return NextResponse.json({ id: lead.id, success: true }, { status: 201 });
   } catch (err) {
     console.error("[POST /api/leads]", err);
