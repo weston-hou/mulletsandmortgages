@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { captureTrackingContext, track, identify } from "@/lib/analytics";
+import { captureTrackingContext, getTrackingContext, track, identify } from "@/lib/analytics";
 
 const LOAN_PURPOSES = [
   { label: "Purchase a home", icon: "🏠" },
@@ -82,8 +82,31 @@ export default function Home() {
     });
     track("lead_submitted", { ...form });
 
-    // TODO: POST to /api/leads to persist in Supabase
-    await new Promise((r) => setTimeout(r, 1000));
+    // POST to /api/leads to persist in Supabase
+    try {
+      const trackingCtx = getTrackingContext();
+      await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          phone: form.phone,
+          loanPurpose: form.loanPurpose,
+          estimatedPrice: form.estimatedPrice,
+          creditScore: form.creditScore,
+          state: form.state,
+          zip: form.zip,
+          propertyType: form.propertyType,
+          downPayment: form.downPayment,
+          ...trackingCtx,
+        }),
+      });
+    } catch (e) {
+      // Non-fatal — still redirect to rates even if Supabase is not configured
+      console.error("Failed to persist lead:", e);
+    }
 
     // Pass form data to results page via query params (non-sensitive only)
     const params = new URLSearchParams({

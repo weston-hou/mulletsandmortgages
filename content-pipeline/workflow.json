@@ -1,0 +1,504 @@
+{
+  "name": "Mullets & Mortgages \u2014 Content Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "REPLACE_WITH_GOOGLE_DRIVE_FOLDER_ID",
+          "mode": "id"
+        },
+        "event": "fileCreated",
+        "simplifyOutput": true
+      },
+      "id": "google-drive-trigger",
+      "name": "Google Drive \u2014 New Video",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract file metadata from Drive trigger\nconst file = $input.first().json;\nconst fileId = file.id;\nconst fileName = file.name;\nconst mimeType = file.mimeType || 'video/mp4';\n\n// Vizard supports Google Drive links natively as videoType 3\n// File must be publicly shared (anyone with link can view)\nconst driveShareUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;\n\n// Strip extension for clean title\nconst title = fileName.replace(/\\.[^/.]+$/, '');\nconst ext = (fileName.match(/\\.([^.]+)$/) || [])[1] || 'mp4';\n\nreturn [{ json: { fileId, fileName, mimeType, driveShareUrl, title, ext, uploadedAt: new Date().toISOString() } }];"
+      },
+      "id": "parse-file",
+      "name": "Parse File Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://elb.vizard.ai/api/v1/project/create",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "videoUrl",
+              "value": "={{ $json.driveShareUrl }}"
+            },
+            {
+              "name": "videoType",
+              "value": "3"
+            },
+            {
+              "name": "title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "lang",
+              "value": "en"
+            },
+            {
+              "name": "numOfClips",
+              "value": "10"
+            },
+            {
+              "name": "preferredClipLengths",
+              "value": "={{ [[0,30],[30,60],[60,90],[180,300]] }}"
+            },
+            {
+              "name": "openAiCaption",
+              "value": "true"
+            },
+            {
+              "name": "viralScore",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "vizard-create-project",
+      "name": "Vizard \u2014 Create Clipping Project",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vizard-api-creds",
+          "name": "Vizard API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst projectId = response?.data?.projectId || response?.projectId;\n\nif (!projectId) {\n  throw new Error('Vizard project creation failed: ' + JSON.stringify(response));\n}\n\nreturn [{ json: { projectId, status: 'processing', createdAt: new Date().toISOString() } }];"
+      },
+      "id": "extract-project-id",
+      "name": "Extract Project ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "minutes"
+      },
+      "id": "wait-for-processing",
+      "name": "Wait 3 Minutes",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        300
+      ],
+      "webhookId": "vizard-wait"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://elb.vizard.ai/api/v1/project/{{ $json.projectId }}/clips",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "vizard-poll-status",
+      "name": "Vizard \u2014 Get Clips",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1340,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vizard-api-creds",
+          "name": "Vizard API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.data.status }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "check-status",
+      "name": "Processing Complete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "minutes"
+      },
+      "id": "wait-retry",
+      "name": "Wait 2 More Minutes",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        500
+      ],
+      "webhookId": "vizard-retry-wait"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sort clips by viral score, split into format buckets\nconst clips = $input.first().json?.data?.clips || [];\n\nif (clips.length === 0) {\n  throw new Error('No clips returned from Vizard');\n}\n\n// Sort by viral score descending\nconst sorted = [...clips].sort((a, b) => (b.viralScore || 0) - (a.viralScore || 0));\n\n// Bucket by duration\nconst shorts   = sorted.filter(c => c.duration <= 60).slice(0, 3);   // TikTok/Reels/YT Shorts\nconst medium   = sorted.filter(c => c.duration > 60 && c.duration <= 300).slice(0, 2); // YouTube/LinkedIn  \nconst teasers  = sorted.filter(c => c.duration <= 30).slice(0, 2);   // Twitter/X\n\nconst allSelected = [\n  ...shorts.map(c => ({ ...c, formats: ['tiktok', 'instagram_reels', 'youtube_shorts'] })),\n  ...medium.map(c => ({ ...c, formats: ['youtube', 'linkedin'] })),\n  ...teasers.map(c => ({ ...c, formats: ['twitter'] }))\n];\n\nreturn allSelected.map(clip => ({ json: clip }));"
+      },
+      "id": "sort-clips",
+      "name": "Sort & Bucket Clips",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://elb.vizard.ai/api/v1/clip/publish",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "clipId",
+              "value": "={{ $json.clipId }}"
+            },
+            {
+              "name": "platforms",
+              "value": "={{ JSON.stringify($json.formats) }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.aiCaption || 'Check out the latest mortgage insights! \ud83c\udfe0 Get your free rate quote \u2192 mulletsandmortgages.com\\n\\n#mortgage #realestate #homebuying #mortgagebroker #firsttimehomebuyer' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "vizard-publish",
+      "name": "Vizard \u2014 Publish to Socials",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vizard-api-creds",
+          "name": "Vizard API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate all published clip results\nconst items = $input.all();\nconst results = items.map(i => i.json);\n\nconst published = results.filter(r => r.status === 'published' || r.success);\nconst failed    = results.filter(r => r.status !== 'published' && !r.success);\n\nconst platformLinks = published.map(r => {\n  const platform = r.platform || r.formats?.[0] || 'unknown';\n  const url = r.url || r.postUrl || '';\n  return `${platform}: ${url}`;\n}).join('\\n');\n\nreturn [{\n  json: {\n    totalPublished: published.length,\n    totalFailed: failed.length,\n    platformLinks,\n    summary: `\u2702\ufe0f Mullets & Mortgages \u2014 ${published.length} clips posted!\\n${platformLinks}\\n\\nSource: mulletsandmortgages.com`,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/REPLACE_TWILIO_ACCOUNT_SID/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "To",
+              "value": "REPLACE_ZACH_PHONE_E164"
+            },
+            {
+              "name": "From",
+              "value": "REPLACE_TWILIO_PHONE_NUMBER"
+            },
+            {
+              "name": "Body",
+              "value": "={{ $json.summary }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "twilio-notify",
+      "name": "SMS Zach \u2014 Content Live",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2440,
+        200
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "twilio-creds",
+          "name": "Twilio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Content Log",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $json.timestamp }}",
+            "Total Published": "={{ $json.totalPublished }}",
+            "Total Failed": "={{ $json.totalFailed }}",
+            "Platform Links": "={{ $json.platformLinks }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "log-to-sheets",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2440,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log error for manual review\nconst error = $input.first().json;\nconsole.error('Pipeline error:', JSON.stringify(error));\nreturn [{ json: { error: true, details: error, timestamp: new Date().toISOString() } }];"
+      },
+      "id": "error-handler",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        500
+      ]
+    }
+  ],
+  "connections": {
+    "Google Drive \u2014 New Video": {
+      "main": [
+        [
+          {
+            "node": "Parse File Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse File Metadata": {
+      "main": [
+        [
+          {
+            "node": "Vizard \u2014 Create Clipping Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vizard \u2014 Create Clipping Project": {
+      "main": [
+        [
+          {
+            "node": "Extract Project ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Project ID": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 Minutes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 3 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Vizard \u2014 Get Clips",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vizard \u2014 Get Clips": {
+      "main": [
+        [
+          {
+            "node": "Processing Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processing Complete?": {
+      "main": [
+        [
+          {
+            "node": "Sort & Bucket Clips",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 2 More Minutes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 2 More Minutes": {
+      "main": [
+        [
+          {
+            "node": "Vizard \u2014 Get Clips",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort & Bucket Clips": {
+      "main": [
+        [
+          {
+            "node": "Vizard \u2014 Publish to Socials",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vizard \u2014 Publish to Socials": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "SMS Zach \u2014 Content Live",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "error-handler"
+  },
+  "meta": {
+    "description": "Zach drops a video in Google Drive \u2192 Vizard AI cuts it into viral clips \u2192 auto-posts to all social platforms \u2192 SMS Zach with links"
+  }
+}
