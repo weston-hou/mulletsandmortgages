@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, type Lead, type FollowupSchedule } from "@/lib/supabase";
 import { getScript, fillTemplate, type PrequalFields } from "@/lib/scripts";
+import { sendEmail, buildPrequalEmailHtml } from "@/lib/email";
 import {
   generateAgentReply,
   generateIntroMessage,
@@ -542,6 +543,35 @@ async function handleTwilioWebhook(req: NextRequest): Promise<NextResponse> {
       });
     } catch (err) {
       console.error("[sms-agent] Failed to send letter SMS:", err);
+    }
+
+    // Also email the letter if the lead has an email address
+    if (lead.email && fieldUpdates.prequal_letter_url) {
+      try {
+        const html = buildPrequalEmailHtml({
+          firstName: lead.first_name,
+          lastName: lead.last_name,
+          email: lead.email,
+          letterUrl: fieldUpdates.prequal_letter_url,
+          priceRange: lead.estimated_price,
+          expiryDays: 45,
+        });
+        await sendEmail({
+          to: lead.email,
+          subject: `Your Pre-Qualification Letter is Ready, ${lead.first_name}!`,
+          html,
+        });
+        await db.conversations.insert({
+          lead_id: lead.id,
+          channel: "email",
+          direction: "outbound",
+          body: `Pre-qual letter emailed to ${lead.email}`,
+          ai_generated: false,
+          metadata: { type: "prequal_letter_email" },
+        });
+      } catch (err) {
+        console.error("[sms-agent] Failed to send letter email:", err);
+      }
     }
   }
 

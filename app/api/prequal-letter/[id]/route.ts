@@ -58,7 +58,7 @@ function renderLetter(lead: {
   const { amount, label } = parsePriceRange(lead.estimated_price);
   const issueDate = formatDate(lead.prequal_completed_at ?? lead.created_at);
   const expiryDate = formatDate(
-    new Date(new Date(lead.prequal_completed_at ?? lead.created_at).getTime() + 90 * 86400000).toISOString()
+    new Date(new Date(lead.prequal_completed_at ?? lead.created_at).getTime() + 45 * 86400000).toISOString()
   );
   const loanPurpose = lead.loan_purpose ?? "purchase";
   const isPurchase = !loanPurpose.toLowerCase().includes("refi");
@@ -364,7 +364,7 @@ function renderLetter(lead: {
       </p>
 
       <p>
-        This letter is valid through <strong>${expiryDate}</strong> (90 days from
+        This letter is valid through <strong>${expiryDate}</strong> (45 days from
         issuance). For questions regarding this pre-qualification, please contact
         our office directly.
       </p>
