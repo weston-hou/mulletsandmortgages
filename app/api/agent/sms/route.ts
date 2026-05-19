@@ -507,17 +507,43 @@ async function handleTwilioWebhook(req: NextRequest): Promise<NextResponse> {
     fieldUpdates.prequal_complete = true;
     fieldUpdates.prequal_completed_at = new Date().toISOString();
 
+    // Stamp the letter URL — public share link using lead ID as token
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://mulletsandmortgages.com";
+    fieldUpdates.prequal_letter_url = `${baseUrl}/api/prequal-letter/${lead.id}?token=${lead.id}`;
+
     // Notify Zach: pre-qual complete
     await notifyZach(
       `🎉 Pre-qual complete for ${lead.first_name} ${lead.last_name} (${lead.phone})!\n` +
         `Income: ${agentResult.extractedFields.prequal_income ?? lead.prequal_income}\n` +
         `Credit: ${agentResult.extractedFields.prequal_credit_score ?? lead.prequal_credit_score}\n` +
         `Liabilities: ${agentResult.extractedFields.prequal_liabilities ?? lead.prequal_liabilities}\n` +
+        `Letter: ${fieldUpdates.prequal_letter_url}\n` +
         `Admin: https://mulletsandmortgages.com/admin/leads/${lead.id}`
     );
   }
 
   await db.leads.update(lead.id, fieldUpdates);
+
+  // Send borrower their pre-qual letter when complete
+  if (fieldUpdates.prequal_letter_url) {
+    const letterMsg =
+      `🎉 Great news, ${lead.first_name}! Your pre-qualification letter is ready. ` +
+      `You can view and download it here: ${fieldUpdates.prequal_letter_url} ` +
+      `Zach will be in touch shortly. Reply STOP to opt out.`;
+    try {
+      const sid = await sendSms(lead.phone, letterMsg);
+      await db.conversations.insert({
+        lead_id: lead.id,
+        channel: "sms",
+        direction: "outbound",
+        body: letterMsg,
+        ai_generated: false,
+        metadata: { twilio_sid: sid, type: "prequal_letter_delivery" },
+      });
+    } catch (err) {
+      console.error("[sms-agent] Failed to send letter SMS:", err);
+    }
+  }
 
   // Handoff notification to Zach
   if (agentResult.shouldHandoffToZach) {

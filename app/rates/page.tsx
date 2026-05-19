@@ -12,6 +12,44 @@ const PLACEHOLDER_RATES = [
   { lender: "ARM Option", rate: "5.750%", apr: "6.134%", type: "7/1 ARM", payment: "—", points: "0", highlight: false },
 ];
 
+// ─── Price range → numeric bounds ────────────────────────────────────────────
+
+interface PriceBounds { min: number | null; max: number | null }
+
+function parsePriceBounds(price: string): PriceBounds {
+  const map: Record<string, PriceBounds> = {
+    "Under $200k":   { min: null,    max: 200000  },
+    "$200k – $400k": { min: 200000,  max: 400000  },
+    "$400k – $600k": { min: 400000,  max: 600000  },
+    "$600k – $800k": { min: 600000,  max: 800000  },
+    "$800k – $1M":   { min: 800000,  max: 1000000 },
+    "Over $1M":      { min: 1000000, max: null     },
+  };
+  return map[price] ?? { min: null, max: null };
+}
+
+function zillowUrl(zip: string, price: string): string {
+  const base = `https://www.zillow.com/homes/for_sale/${zip}_rb/`;
+  if (!price) return base;
+  const { min, max } = parsePriceBounds(price);
+  if (min === null && max === null) return base;
+  const minPart = min ?? 0;
+  const maxPart = max ?? 9999999;
+  return `${base}${minPart}-${maxPart}_price/`;
+}
+
+function redfinUrl(zip: string, price: string): string {
+  const base = `https://www.redfin.com/zipcode/${zip}/filter/`;
+  if (!price) return `https://www.redfin.com/zipcode/${zip}`;
+  const { min, max } = parsePriceBounds(price);
+  const parts: string[] = ["property-type=house,condo,townhouse"];
+  if (min !== null) parts.push(`min-price=${min}`);
+  if (max !== null) parts.push(`max-price=${max}`);
+  return base + parts.join(",");
+}
+
+// ─── Page content ─────────────────────────────────────────────────────────────
+
 function RatesContent() {
   const params = useSearchParams();
   const name = params.get("name") ?? "there";
@@ -52,7 +90,7 @@ function RatesContent() {
         <div className="mb-8 animate-slide-up">
           <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-1.5 text-green-400 text-sm font-medium mb-4">
             <span>✓</span>
-            <span>You're in — Zach is reviewing your scenario</span>
+            <span>You&apos;re in — Zach is reviewing your scenario</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-white mb-2">
             Hey {name}, here are your options
@@ -106,7 +144,7 @@ function RatesContent() {
         {/* CTA — Apply / Talk to Zach */}
         <div className="grid sm:grid-cols-2 gap-4 mb-12 animate-slide-up delay-200" style={{ opacity: 0 }}>
           <a
-            href={`https://prod.lendingpad.com/adaxa-home/pos#/?loid=c4d5c50b-bce5-4a80-8f65-2bac9bb4d12f`}
+            href="https://prod.lendingpad.com/adaxa-home/pos#/?loid=c4d5c50b-bce5-4a80-8f65-2bac9bb4d12f"
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => track("apply_clicked", { source: "rates_page" })}
@@ -123,27 +161,54 @@ function RatesContent() {
           </a>
         </div>
 
-        {/* Homes section — zip-based */}
+        {/* Homes section — zip + price range filtered */}
         {zip && (
           <div className="mb-12 animate-slide-up delay-300" style={{ opacity: 0 }}>
             <div className="mullet-divider mb-6" />
             <h2 className="text-xl font-bold text-white mb-1">Homes near {zip}</h2>
-            <p className="text-zinc-500 text-sm mb-4">See what's available in your price range.</p>
-
-            {/* Zillow embed — replace with real API when ready */}
-            <a
-              href={`https://www.zillow.com/homes/for_sale/${zip}_rb/`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => track("homes_link_clicked", { zip })}
-              className="flex items-center justify-between w-full bg-zinc-900 border border-zinc-700 rounded-xl px-5 py-4 hover:border-amber-400/40 transition-all duration-200 group"
-            >
-              <div>
-                <div className="text-white font-semibold">Browse homes for sale in {zip}</div>
-                <div className="text-zinc-500 text-sm mt-0.5">Opens Zillow · {price ? `filtered to ${price}` : "all price ranges"}</div>
-              </div>
-              <span className="text-amber-400 group-hover:translate-x-1 transition-transform duration-200">→</span>
-            </a>
+            <p className="text-zinc-500 text-sm mb-4">
+              {price
+                ? <>Filtered to <span className="text-white">{price}</span> — see what&apos;s in your range.</>
+                : "See what's available in your area."}
+            </p>
+            <div className="space-y-3">
+              <a
+                href={zillowUrl(zip, price)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("homes_link_clicked", { platform: "zillow", zip, price })}
+                className="flex items-center justify-between w-full bg-zinc-900 border border-zinc-700 rounded-xl px-5 py-4 hover:border-amber-400/40 transition-all duration-200 group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">🏠</span>
+                  <div>
+                    <div className="text-white font-semibold">Browse on Zillow</div>
+                    <div className="text-zinc-500 text-sm mt-0.5">
+                      {price ? `Homes ${price} in ${zip}` : `All homes for sale in ${zip}`}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-amber-400 group-hover:translate-x-1 transition-transform duration-200">→</span>
+              </a>
+              <a
+                href={redfinUrl(zip, price)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("homes_link_clicked", { platform: "redfin", zip, price })}
+                className="flex items-center justify-between w-full bg-zinc-900 border border-zinc-700 rounded-xl px-5 py-4 hover:border-amber-400/40 transition-all duration-200 group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">🔴</span>
+                  <div>
+                    <div className="text-white font-semibold">Browse on Redfin</div>
+                    <div className="text-zinc-500 text-sm mt-0.5">
+                      {price ? `Homes ${price} in ${zip}` : `All homes for sale in ${zip}`}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-amber-400 group-hover:translate-x-1 transition-transform duration-200">→</span>
+              </a>
+            </div>
           </div>
         )}
 
