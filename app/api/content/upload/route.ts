@@ -146,7 +146,4 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-// Next.js config: disable body parser for file uploads
-export const config = {
-  api: { bodyParser: false },
-};
+// Next.js App Router handles multipart natively — no config export needed
