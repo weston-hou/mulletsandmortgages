@@ -81,8 +81,8 @@ function getPhoenixDay(): number {
 function isBusinessHours(): boolean {
   const h = getPhoenixHour();
   const d = getPhoenixDay();
-  // Mon–Fri, 8am–7pm Phoenix time
-  return d >= 1 && d <= 5 && h >= 8 && h < 19;
+  // Mon–Sat, 8am–8pm Phoenix time
+  return d >= 1 && d <= 6 && h >= 8 && h < 20;
 }
 
 /**
@@ -97,7 +97,7 @@ function calculateSendAt(timingMin: number, timingMax: number): Date {
   );
   const h = nowPhoenix.getHours();
   const d = nowPhoenix.getDay();
-  const isInHours = d >= 1 && d <= 5 && h >= 8 && h < 19;
+  const isInHours = d >= 1 && d <= 6 && h >= 8 && h < 20;
 
   if (isInHours) {
     // Random delay within timing window
@@ -112,10 +112,10 @@ function calculateSendAt(timingMin: number, timingMax: number): Date {
   );
   nextDay.setHours(8, 0, 0, 0);
 
-  // Advance to next weekday
+  // Advance to next business day (Mon–Sat)
   do {
     nextDay.setDate(nextDay.getDate() + 1);
-  } while (nextDay.getDay() === 0 || nextDay.getDay() === 6);
+  } while (nextDay.getDay() === 0); // skip Sundays only
 
   const offsetMs = randomBetween(2, 9) * 60_000;
   const candidate = new Date(nextDay.getTime() + offsetMs);
