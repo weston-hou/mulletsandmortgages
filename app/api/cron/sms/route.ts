@@ -20,33 +20,32 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    // Call the SMS agent's send_scheduled action internally
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? `https://${req.headers.get("host")}`;
-    const res = await fetch(`${baseUrl}/api/agent/sms`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // Forward the auth token so the agent route doesn't need its own auth
-      },
-      body: JSON.stringify({ action: "send_scheduled" }),
-    });
+    const authHeader = { "Content-Type": "application/json", "Authorization": `Bearer ${cronSecret}` };
 
-    if (!res.ok) {
-      const text = await res.text();
-      console.error(`[cron/sms] SMS agent returned ${res.status}: ${text}`);
-      return NextResponse.json(
-        { error: `SMS agent error: ${res.status}` },
-        { status: 500 }
-      );
-    }
+    // Run SMS scheduled sends + email sequence in parallel
+    const [smsRes, emailRes] = await Promise.all([
+      fetch(`${baseUrl}/api/agent/sms`, {
+        method: "POST",
+        headers: authHeader,
+        body: JSON.stringify({ action: "send_scheduled" }),
+      }),
+      fetch(`${baseUrl}/api/agent/email`, {
+        method: "POST",
+        headers: authHeader,
+        body: JSON.stringify({ action: "send_sequence" }),
+      }),
+    ]);
 
-    const data = await res.json();
-    console.log(`[cron/sms] Sent ${data.sent ?? 0} message(s)`);
+    const smsData  = smsRes.ok  ? await smsRes.json()  : { sent: 0, error: `sms ${smsRes.status}` };
+    const emailData = emailRes.ok ? await emailRes.json() : { sent: 0, error: `email ${emailRes.status}` };
+
+    console.log(`[cron] SMS sent: ${smsData.sent ?? 0}, Email sent: ${emailData.sent ?? 0}`);
 
     return NextResponse.json({
       ok: true,
-      sent: data.sent ?? 0,
-      errors: data.errors ?? [],
+      sms_sent: smsData.sent ?? 0,
+      email_sent: emailData.sent ?? 0,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {

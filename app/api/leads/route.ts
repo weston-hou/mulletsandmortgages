@@ -72,17 +72,30 @@ export async function POST(req: NextRequest) {
       preferred_contact: preferredContact ?? "email",
     });
 
-    // Trigger SMS agent to schedule the first outreach
-    try {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://mulletsandmortgages.com";
+    // Trigger the right agent based on preferred contact method
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://mulletsandmortgages.com";
+    const cronSecret = process.env.CRON_SECRET ?? process.env.ADMIN_PASSWORD ?? "";
+    const agentHeaders = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${cronSecret}`,
+    };
+
+    const pref = preferredContact ?? "email";
+
+    if (pref === "sms" || pref === "voice") {
+      // SMS agent — schedules outreach via Twilio
       fetch(`${baseUrl}/api/agent/sms`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: agentHeaders,
         body: JSON.stringify({ action: "trigger", lead_id: lead.id }),
       }).catch(err => console.error("[POST /api/leads] SMS trigger failed:", err));
-    } catch (err) {
-      // Non-fatal — lead is created, SMS will be picked up by cron as fallback
-      console.error("[POST /api/leads] SMS trigger error:", err);
+    } else {
+      // Email agent — sends intro email as Zach immediately
+      fetch(`${baseUrl}/api/agent/email`, {
+        method: "POST",
+        headers: agentHeaders,
+        body: JSON.stringify({ action: "trigger", lead_id: lead.id }),
+      }).catch(err => console.error("[POST /api/leads] Email trigger failed:", err));
     }
 
     return NextResponse.json({ id: lead.id, success: true }, { status: 201 });
