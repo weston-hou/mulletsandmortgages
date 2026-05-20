@@ -182,6 +182,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const leads = await db.leads.list({
         preferred_contact: "eq.email",
         last_contacted_at: "is.null",
+        email: "not.is.null",
         stage: "eq.new",
         limit: "20",
         order: "created_at.asc",
