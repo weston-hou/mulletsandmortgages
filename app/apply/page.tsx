@@ -70,8 +70,13 @@ interface FormState {
   downPayment:   string;
   creditScore:   string;
   employment:    string;
-  income:        string;
-  liabilities:   string;
+  income:        string;        // annual gross
+  carLoan:       string;        // monthly payment
+  studentLoan:   string;        // monthly payment
+  currentMortgage: string;      // monthly payment
+  sellCurrentHome: string;      // "yes" | "no" | ""
+  otherDebt:     string;        // monthly payment
+  requestedLoanAmount: string;  // dollar amount they want pre-qual for
   firstName:     string;
   lastName:      string;
   email:         string;
@@ -182,7 +187,12 @@ function ApplyPageInner() {
     creditScore:    searchParams.get("creditScore") ?? searchParams.get("credit_score") ?? "",
     employment:     "",
     income:         "",
-    liabilities:    "",
+    carLoan:        "",
+    studentLoan:    "",
+    currentMortgage: "",
+    sellCurrentHome: "",
+    otherDebt:      "",
+    requestedLoanAmount: "",
     firstName:      searchParams.get("firstName")      ?? "",
     lastName:       searchParams.get("lastName")       ?? "",
     email:          searchParams.get("email")          ?? "",
@@ -221,13 +231,21 @@ function ApplyPageInner() {
 
   // ── Submit ──────────────────────────────────────────────────────────────────
 
+  // Parse a dollar/number string to a number
+  const parseDollar = (s: string) => parseFloat(s.replace(/[^0-9.]/g, "")) || 0;
+
   // Called when submitting from step 3 with pre-filled contact info (email preference leads)
   const handleSubmitDirect = async () => {
     if (!prefill.email || !prefill.firstName) { setStep(4); return; } // fallback to contact step
+    if (!form.income || !form.requestedLoanAmount) {
+      setError("Please fill in your income and the loan amount you need.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/leads", {
+      // Upsert lead (may already exist from landing page)
+      const leadsRes = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -243,8 +261,7 @@ function ApplyPageInner() {
           downPayment:    form.downPayment,
           creditScore:    form.creditScore,
           prequal_employment:   form.employment,
-          prequal_income:       form.income,
-          prequal_liabilities:  form.liabilities,
+          prequal_income:       String(parseDollar(form.income) / 12),
           prequal_credit_score: form.creditScore,
           prequal_zip:          form.zip,
           preferredContact: "email",
@@ -252,9 +269,33 @@ function ApplyPageInner() {
           utm_medium: "prequal_link",
         }),
       });
-      if (!res.ok) throw new Error("Submit failed");
-      const data = await res.json();
-      setLeadId(data.id ?? null);
+      if (!leadsRes.ok) throw new Error("Lead create failed");
+      const leadData = await leadsRes.json();
+      const lid = leadData.id;
+      setLeadId(lid);
+
+      // Run pre-qual engine
+      const grossMonthly = parseDollar(form.income) / 12;
+      const mortgagePayment = form.sellCurrentHome === "yes" ? 0 : parseDollar(form.currentMortgage);
+      const prequalRes = await fetch("/api/prequal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lead_id:              lid,
+          grossMonthlyIncome:   grossMonthly,
+          carLoan:              parseDollar(form.carLoan),
+          studentLoan:          parseDollar(form.studentLoan),
+          currentMortgage:      mortgagePayment,
+          otherDebt:            parseDollar(form.otherDebt),
+          requestedLoanAmount:  parseDollar(form.requestedLoanAmount),
+        }),
+      });
+      const prequalData = await prequalRes.json();
+      if (!prequalData.approved) {
+        setError(prequalData.declineReason ?? "We were unable to issue a pre-qualification based on the numbers provided. Zach will follow up shortly.");
+        setLoading(false);
+        return;
+      }
       setStep(TOTAL_STEPS + 1);
     } catch {
       setError("Something went wrong — please try again.");
@@ -292,7 +333,7 @@ function ApplyPageInner() {
           // Pre-qual fields collected inline
           prequal_employment: form.employment,
           prequal_income:     form.income,
-          prequal_liabilities: form.liabilities,
+          // prequal_liabilities collected via /api/prequal
           prequal_credit_score: form.creditScore,
           prequal_zip:    form.zip,
           utm_source:    "direct",
@@ -452,34 +493,34 @@ function ApplyPageInner() {
           </div>
         )}
 
-        {/* ── Step 3: Credit & income ── */}
+        {/* ── Step 3: Income, debts & loan amount ── */}
         {step === 3 && (
           <div>
             <StepHeading
-              title="A little about your finances"
-              sub="This helps us find programs you'll actually qualify for. Nothing is pulled yet."
+              title="Income & monthly debts"
+              sub="We use this to calculate exactly what you qualify for. Nothing is pulled from your credit yet."
             />
             <div className="space-y-4">
 
-              {/* Credit score */}
-              <div>
-                <label className="block text-xs text-zinc-400 mb-2 font-medium">Credit score range</label>
-                <div className="space-y-2">
-                  {CREDIT_RANGES.map(({ label, value }) => (
-                    <OptionButton
-                      key={value} label={label}
-                      selected={form.creditScore === value}
-                      onClick={() => update("creditScore", value)}
-                    />
-                  ))}
+              {/* Credit score — show only if not pre-filled */}
+              {!prefill.creditScore && (
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-2 font-medium">Credit score range</label>
+                  <div className="space-y-2">
+                    {CREDIT_RANGES.map(({ label, value }) => (
+                      <OptionButton
+                        key={value} label={label}
+                        selected={form.creditScore === value}
+                        onClick={() => update("creditScore", value)}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Employment */}
               <div>
-                <label className="block text-xs text-zinc-400 mb-1.5 font-medium">
-                  Employment status
-                </label>
+                <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Employment status</label>
                 <select
                   value={form.employment}
                   onChange={e => update("employment", e.target.value)}
@@ -496,37 +537,109 @@ function ApplyPageInner() {
                 </select>
               </div>
 
-              {/* Income */}
+              {/* Annual income */}
               <div>
                 <label className="block text-xs text-zinc-400 mb-1.5 font-medium">
-                  Annual gross income <span className="text-zinc-600">(before taxes, approximate)</span>
+                  Annual gross income <span className="text-zinc-600">(before taxes)</span>
                 </label>
                 <input
                   type="text" inputMode="numeric"
                   value={form.income}
                   onChange={e => update("income", e.target.value)}
-                  placeholder="e.g. $85,000"
+                  placeholder="e.g. 85000"
                   className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400 placeholder-zinc-600"
                 />
               </div>
 
-              {/* Liabilities */}
+              {/* Loan amount requested */}
               <div>
                 <label className="block text-xs text-zinc-400 mb-1.5 font-medium">
-                  Monthly debt payments <span className="text-zinc-600">(car, student loans, credit cards — approximate total)</span>
+                  How much do you want to be pre-qualified for?
                 </label>
                 <input
                   type="text" inputMode="numeric"
-                  value={form.liabilities}
-                  onChange={e => update("liabilities", e.target.value)}
-                  placeholder="e.g. $500/mo"
+                  value={form.requestedLoanAmount}
+                  onChange={e => update("requestedLoanAmount", e.target.value)}
+                  placeholder="e.g. 350000"
                   className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400 placeholder-zinc-600"
                 />
               </div>
+
+              <div className="border-t border-zinc-800 pt-4">
+                <p className="text-xs text-zinc-500 mb-3">Monthly debt payments — enter 0 if none</p>
+
+                {/* Car loan */}
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Car loan payment</label>
+                    <input
+                      type="text" inputMode="numeric"
+                      value={form.carLoan}
+                      onChange={e => update("carLoan", e.target.value)}
+                      placeholder="0"
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400 placeholder-zinc-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Student loan payment</label>
+                    <input
+                      type="text" inputMode="numeric"
+                      value={form.studentLoan}
+                      onChange={e => update("studentLoan", e.target.value)}
+                      placeholder="0"
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400 placeholder-zinc-600"
+                    />
+                  </div>
+                </div>
+
+                {/* Current mortgage */}
+                <div className="mb-3">
+                  <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Current mortgage payment <span className="text-zinc-600">(0 if renting or none)</span></label>
+                  <input
+                    type="text" inputMode="numeric"
+                    value={form.currentMortgage}
+                    onChange={e => update("currentMortgage", e.target.value)}
+                    placeholder="0"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400 placeholder-zinc-600"
+                  />
+                </div>
+
+                {/* Selling current home? */}
+                {parseFloat(form.currentMortgage || "0") > 0 && (
+                  <div className="mb-3">
+                    <label className="block text-xs text-zinc-400 mb-2 font-medium">Are you planning to sell your current home before closing?</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {["Yes", "No"].map(opt => (
+                        <OptionButton
+                          key={opt} label={opt}
+                          selected={form.sellCurrentHome === opt.toLowerCase()}
+                          onClick={() => update("sellCurrentHome", opt.toLowerCase())}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Other debt */}
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Other monthly debt <span className="text-zinc-600">(credit cards, personal loans, etc.)</span></label>
+                  <input
+                    type="text" inputMode="numeric"
+                    value={form.otherDebt}
+                    onChange={e => update("otherDebt", e.target.value)}
+                    placeholder="0"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-amber-400 placeholder-zinc-600"
+                  />
+                </div>
+              </div>
+
+              {error && <p className="text-red-400 text-sm">{error}</p>}
             </div>
             <NavButtons
               onBack={back} onNext={next}
-              disabled={!form.creditScore || !form.employment}
+              nextLabel={isPreFilled ? "Get My Pre-Qual Letter →" : "Next"}
+              disabled={!form.employment || !form.income || !form.requestedLoanAmount}
+              loading={loading}
             />
           </div>
         )}

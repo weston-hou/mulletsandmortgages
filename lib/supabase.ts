@@ -83,7 +83,7 @@ export interface Conversation {
   id: string;
   created_at: string;
   lead_id: string;
-  channel: "sms" | "voice" | "email";
+  channel: "sms" | "voice" | "email" | "system";
   direction: "inbound" | "outbound";
   body: string;
   ai_generated?: boolean;

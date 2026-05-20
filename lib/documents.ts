@@ -251,3 +251,147 @@ export function renderDocument(type: DocumentType, ctx: DocumentContext, signUrl
     default: throw new Error(`Unknown document type: ${type}`);
   }
 }
+
+// ─── Pre-qual letter ──────────────────────────────────────────────────────────
+
+export interface PrequalLetterContext {
+  leadId: string;
+  recipient: DocumentRecipient;
+  loanPurpose: string;
+  approvedLoanAmount: number;
+  assumedMonthlyPayment: number;
+  stressRatePct: number;
+  maxMonthlyPayment: number;
+  state: string;
+  propertyType?: string;
+  issuedDate: string;   // formatted string
+  expiryDate: string;   // formatted string
+}
+
+export function renderPrequalLetter(ctx: PrequalLetterContext): string {
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pre-Qualification Letter</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Times New Roman", Times, serif; color: #1a1a1a; background: #fff; }
+    .page { max-width: 760px; margin: 0 auto; padding: 60px 72px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; }
+    .logo { font-family: Arial, sans-serif; font-size: 20px; font-weight: 900; color: #1a1a1a; }
+    .logo span { color: #d97706; }
+    .broker-info { font-family: Arial, sans-serif; font-size: 11px; color: #666; text-align: right; line-height: 1.6; }
+    .divider { border: none; border-top: 2px solid #d97706; margin: 0 0 32px; }
+    h1 { font-family: Arial, sans-serif; font-size: 18px; font-weight: 700; text-align: center; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 28px; color: #1a1a1a; }
+    .meta { font-family: Arial, sans-serif; font-size: 12px; color: #555; margin-bottom: 24px; line-height: 1.8; }
+    p { font-size: 14px; line-height: 1.9; margin-bottom: 16px; }
+    .highlight-box { border: 1.5px solid #d97706; border-radius: 6px; padding: 20px 28px; margin: 28px 0; background: #fffbeb; }
+    .highlight-box table { width: 100%; border-collapse: collapse; }
+    .highlight-box td { padding: 5px 0; font-family: Arial, sans-serif; font-size: 13px; }
+    .highlight-box td:first-child { color: #666; }
+    .highlight-box td:last-child { text-align: right; font-weight: 700; color: #1a1a1a; }
+    .conditions { font-size: 12.5px; line-height: 1.8; color: #444; margin-bottom: 20px; }
+    .conditions li { margin-left: 20px; margin-bottom: 4px; }
+    .signature-block { margin-top: 40px; }
+    .sig-line { border-top: 1px solid #333; width: 280px; margin-top: 48px; padding-top: 6px; font-family: Arial, sans-serif; font-size: 11px; color: #555; }
+    .footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #ddd; font-family: Arial, sans-serif; font-size: 10px; color: #aaa; line-height: 1.7; text-align: center; }
+    @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="logo">✂️ Mullets <span>&</span> Mortgages</div>
+      <div class="broker-info">
+        Zachary Boyko · NMLS #2004025<br />
+        BrokerBoyko LLC · NMLS #2380533<br />
+        (602) 410-1334 · zach@mulletsandmortgages.com<br />
+        mulletsandmortgages.com
+      </div>
+    </div>
+    <hr class="divider" />
+
+    <h1>Pre-Qualification Letter</h1>
+
+    <div class="meta">
+      <strong>Date:</strong> ${ctx.issuedDate}<br />
+      <strong>Prepared for:</strong> ${ctx.recipient.name}<br />
+      <strong>Valid through:</strong> ${ctx.expiryDate}
+    </div>
+
+    <p>
+      This letter confirms that <strong>${ctx.recipient.name}</strong> has been pre-qualified
+      for a ${ctx.loanPurpose.toLowerCase()} mortgage in the state of <strong>${ctx.state}</strong>
+      based on information provided to BrokerBoyko LLC.
+    </p>
+
+    <div class="highlight-box">
+      <table>
+        <tr>
+          <td>Pre-Qualified Loan Amount</td>
+          <td>${fmt(ctx.approvedLoanAmount)}</td>
+        </tr>
+        <tr>
+          <td>Estimated Monthly P&amp;I Payment</td>
+          <td>${fmt(ctx.assumedMonthlyPayment)}/mo</td>
+        </tr>
+        <tr>
+          <td>Maximum Allowable Interest Rate</td>
+          <td>${ctx.stressRatePct.toFixed(2)}%</td>
+        </tr>
+        <tr>
+          <td>Total Monthly Housing Payment Not to Exceed</td>
+          <td>${fmt(ctx.maxMonthlyPayment)}/mo</td>
+        </tr>
+      </table>
+    </div>
+
+    <p>
+      This pre-qualification is contingent upon the following conditions being satisfied
+      at the time of formal loan application:
+    </p>
+
+    <div class="conditions">
+      <ul>
+        <li>Verification of income, employment history, and assets</li>
+        <li>Satisfactory appraisal of the subject property</li>
+        <li>Clear title and acceptable property condition</li>
+        <li>Final underwriting approval by the selected lender</li>
+        <li>Interest rate at or below ${ctx.stressRatePct.toFixed(2)}% at time of lock</li>
+        <li>No material change in the applicant's financial condition</li>
+      </ul>
+    </div>
+
+    <p>
+      This letter does not constitute a commitment to lend and is not a guarantee of
+      final loan approval. Final terms are subject to lender underwriting and market
+      conditions at the time of application.
+    </p>
+
+    <p>
+      If you have any questions about this pre-qualification or the mortgage process,
+      please contact Zach Boyko directly at <strong>(602) 410-1334</strong> or
+      <strong>zach@mulletsandmortgages.com</strong>.
+    </p>
+
+    <div class="signature-block">
+      <div class="sig-line">
+        Zachary Boyko · Mortgage Broker · NMLS #2004025<br />
+        BrokerBoyko LLC · NMLS #2380533
+      </div>
+    </div>
+
+    <div class="footer">
+      Equal Housing Lender. This pre-qualification is based solely on information provided by the applicant and has not been verified.
+      BrokerBoyko LLC is a licensed mortgage brokerage. NMLS #2380533. Licensed in ${ctx.state}.
+      This letter expires on ${ctx.expiryDate}.
+    </div>
+  </div>
+</body>
+</html>`;
+}

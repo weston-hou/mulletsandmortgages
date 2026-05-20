@@ -53,6 +53,10 @@ interface PrequalEmailOptions {
   letterUrl: string;
   priceRange?: string;
   expiryDays?: number;
+  wasPartial?: boolean;
+  requestedAmount?: string;
+  qualifiedAmount?: string;
+  shortfallAmount?: string;
 }
 
 export function buildPrequalEmailHtml(opts: PrequalEmailOptions): string {
@@ -61,6 +65,10 @@ export function buildPrequalEmailHtml(opts: PrequalEmailOptions): string {
     letterUrl,
     priceRange,
     expiryDays = 45,
+    wasPartial = false,
+    requestedAmount,
+    qualifiedAmount,
+    shortfallAmount,
   } = opts;
 
   return `<!DOCTYPE html>
@@ -108,11 +116,20 @@ export function buildPrequalEmailHtml(opts: PrequalEmailOptions): string {
     <div class="body">
       <div class="logo">✂️ Mullets <span>&</span> Mortgages</div>
 
-      <h1>You're pre-qualified, ${firstName}! 🎉</h1>
+      <h1>${wasPartial ? `Your pre-qualification is ready, ${firstName}` : `You're pre-qualified, ${firstName}! 🎉`}</h1>
+      ${wasPartial ? `
+      <p>
+        Good news — we were able to pre-qualify you, though for a different amount than you requested.
+        You asked for ${requestedAmount}, but based on your income and debts, we can pre-qualify you for up to <strong>${qualifiedAmount}</strong>.
+        The difference of ${shortfallAmount} would require either a higher income, lower debts, or a smaller loan.
+      </p>
+      <p>Your pre-qualification letter is ready — you can view, download, and share it with your real estate agent.</p>
+      ` : `
       <p>
         Great news — your pre-qualification is complete. Your letter is ready to
         view, download, and share with your real estate agent.
       </p>
+      `}
 
       ${priceRange ? `
       <div class="highlight-box">
