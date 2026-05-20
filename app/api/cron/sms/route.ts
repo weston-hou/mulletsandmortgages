@@ -21,7 +21,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? `https://${req.headers.get("host")}`;
-    const authHeader = { "Content-Type": "application/json", "Authorization": `Bearer ${cronSecret}` };
+    const internalKey = cronSecret ?? process.env.ADMIN_PASSWORD ?? "";
+    const authHeader = { "Content-Type": "application/json", "X-Admin-Key": internalKey };
 
     // Run SMS scheduled sends + email sequence in parallel
     const [smsRes, emailRes] = await Promise.all([

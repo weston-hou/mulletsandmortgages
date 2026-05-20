@@ -33,7 +33,10 @@ function isAuthorized(req: NextRequest): boolean {
   const provided =
     req.headers.get("X-Admin-Key") ??
     req.headers.get("Authorization")?.replace("Bearer ", "");
-  return !!provided && (provided === adminKey || provided === cronSecret);
+  if (!provided) return false;
+  if (adminKey && provided === adminKey) return true;
+  if (cronSecret && provided === cronSecret) return true;
+  return false;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

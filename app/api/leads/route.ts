@@ -74,10 +74,10 @@ export async function POST(req: NextRequest) {
 
     // Trigger the right agent based on preferred contact method
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://mulletsandmortgages.com";
-    const cronSecret = process.env.CRON_SECRET ?? process.env.ADMIN_PASSWORD ?? "";
+    const internalKey = process.env.CRON_SECRET ?? process.env.ADMIN_PASSWORD ?? "";
     const agentHeaders = {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${cronSecret}`,
+      "X-Admin-Key": internalKey,
     };
 
     const pref = preferredContact ?? "email";
