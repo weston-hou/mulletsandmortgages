@@ -72,12 +72,12 @@ Confirmed credit score: ${collectedFields.prequal_credit_score ?? "not yet"}
 ${isFirstEmail
   ? `This is the FIRST email to this lead. 
   - Introduce yourself briefly (1–2 sentences max — they already know who you are from the site)
-  - Tell them you pulled some rate options — link them to: https://mulletsandmortgages.com/rates?name=${encodeURIComponent(lead.first_name)}&purpose=${encodeURIComponent(lead.loan_purpose ?? "")}&price=${encodeURIComponent(lead.estimated_price ?? "")}&credit=${encodeURIComponent(lead.credit_score ?? "")}&state=${encodeURIComponent(lead.state ?? "")}&zip=${encodeURIComponent(lead.zip ?? "")}
-  - Include BOTH of these links naturally in the email body (present them as two options):
-      1. Quick pre-qual form (2 min, get a letter fast): https://mulletsandmortgages.com/apply
-      2. Full loan application (when ready to go all the way): https://prod.lendingpad.com/adaxa-home/pos#/?loid=c4d5c50b-bce5-4a80-8f65-2bac9bb4d12f
+  - They just came from the rates page so don't say "I pulled rates" — instead acknowledge their loan scenario (${lead.loan_purpose ?? "home purchase"}, ${lead.estimated_price ?? ""}, ${lead.state ?? ""}) and say you wanted to follow up personally
+  - Include BOTH of these links naturally in the email body:
+      1. Quick pre-qual form (2 min, they get a pre-qual letter): https://mulletsandmortgages.com/apply?firstName=${encodeURIComponent(lead.first_name)}&lastName=${encodeURIComponent(lead.last_name ?? "")}&email=${encodeURIComponent(lead.email ?? "")}&phone=${encodeURIComponent(lead.phone ?? "")}&loanPurpose=${encodeURIComponent(lead.loan_purpose ?? "")}&estimatedPrice=${encodeURIComponent(lead.estimated_price ?? "")}&creditScore=${encodeURIComponent(lead.credit_score ?? "")}&state=${encodeURIComponent(lead.state ?? "")}&zip=${encodeURIComponent(lead.zip ?? "")}&propertyType=${encodeURIComponent(lead.property_type ?? "")}&downPayment=${encodeURIComponent(lead.down_payment ?? "")}
+      2. Full loan application: https://prod.lendingpad.com/adaxa-home/pos#/?loid=c4d5c50b-bce5-4a80-8f65-2bac9bb4d12f
   - Ask the ONE pre-qual question: "${nextQuestion ?? "Are you ready to move forward?"}"
-  - Keep it SHORT — 5–7 sentences total. No fluff.`
+  - Keep it SHORT — 4–6 sentences total. No fluff.`
   : complete
   ? `Pre-qual is COMPLETE. Write a warm, brief email:
   - Congratulate them — they have everything Zach needs
@@ -103,11 +103,11 @@ ${isFirstEmail
 - Signature block at the end (HTML): Zach Boyko | Mortgage Broker | NMLS #2004025 | (602) 410-1334 | mulletsandmortgages.com
 - The HTML should be clean and minimal — dark text on white, amber accent color #f59e0b for any links
 
-## Response format — MUST be valid JSON:
+## Response format — you MUST respond with ONLY a valid JSON object, nothing else before or after it:
 {
-  "subject": "email subject line",
-  "bodyText": "plain text version of the email body",
-  "bodyHtml": "full HTML email body including signature",
+  "subject": "email subject line — short and personal",
+  "bodyText": "plain text version of the email body (no HTML tags)",
+  "bodyHtml": "the email body paragraphs as HTML <p> tags ONLY — do NOT include the full HTML document, doctype, head, body tags, or signature block — just the inner content paragraphs",
   "extractedFields": {
     "full_name": "string or null",
     "prequal_zip": "string or null",
@@ -128,7 +128,6 @@ Set shouldHandoffToZach: true if the lead asks something complex, mentions bankr
 // ─── Pre-qual fields ──────────────────────────────────────────────────────────
 
 const PREQUAL_FIELD_ORDER: (keyof PrequalFields)[] = [
-  "full_name",
   "prequal_zip",
   "prequal_employment",
   "prequal_income",
@@ -136,8 +135,7 @@ const PREQUAL_FIELD_ORDER: (keyof PrequalFields)[] = [
   "prequal_credit_score",
 ];
 
-const FIELD_QUESTIONS: Record<keyof PrequalFields, string> = {
-  full_name:            "What's your full legal name as it appears on your ID?",
+const FIELD_QUESTIONS: Record<string, string> = {
   prequal_zip:          "What zip code is the property you're looking at?",
   prequal_employment:   "How long have you been at your current job, and are you W2 or self-employed?",
   prequal_income:       "What's your gross annual income (before taxes)?",

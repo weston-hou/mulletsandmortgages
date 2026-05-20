@@ -16,7 +16,8 @@
  *   5. Confirmation
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -167,29 +168,41 @@ function NavButtons({
 
 const TOTAL_STEPS = 4;
 
-export default function ApplyPage() {
-  const [step, setStep]       = useState(1);
+function ApplyPageInner() {
+  const searchParams = useSearchParams();
+
+  // Pre-populate from URL params (passed from email agent links)
+  const prefill: FormState = {
+    loanPurpose:    searchParams.get("loanPurpose")    ?? "",
+    estimatedPrice: searchParams.get("estimatedPrice") ?? "",
+    propertyType:   searchParams.get("propertyType")   ?? "",
+    state:          searchParams.get("state")          ?? "",
+    zip:            searchParams.get("zip")            ?? "",
+    downPayment:    searchParams.get("downPayment")    ?? "",
+    creditScore:    searchParams.get("creditScore")    ?? "",
+    employment:     "",
+    income:         "",
+    liabilities:    "",
+    firstName:      searchParams.get("firstName")      ?? "",
+    lastName:       searchParams.get("lastName")       ?? "",
+    email:          searchParams.get("email")          ?? "",
+    phone:          searchParams.get("phone")          ?? "",
+  };
+
+  // Determine starting step — skip steps already answered
+  function getStartStep(f: FormState): number {
+    if (!f.loanPurpose) return 1;
+    if (!f.estimatedPrice || !f.creditScore || !f.state || !f.zip || !f.propertyType || !f.downPayment) return 2;
+    return 3; // jump straight to employment/income since contact info is pre-filled
+  }
+
+  const [step, setStep]       = useState(() => getStartStep(prefill));
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
   const [leadId, setLeadId]   = useState<string | null>(null);
   const [smsConsent, setSmsConsent] = useState(false);
 
-  const [form, setForm] = useState<FormState>({
-    loanPurpose:    "",
-    estimatedPrice: "",
-    propertyType:   "",
-    state:          "",
-    zip:            "",
-    downPayment:    "",
-    creditScore:    "",
-    employment:     "",
-    income:         "",
-    liabilities:    "",
-    firstName:      "",
-    lastName:       "",
-    email:          "",
-    phone:          "",
-  });
+  const [form, setForm] = useState<FormState>(prefill);
 
   const update = (field: keyof FormState, value: string) =>
     setForm(prev => ({ ...prev, [field]: value }));
@@ -595,5 +608,13 @@ export default function ApplyPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function ApplyPage() {
+  return (
+    <Suspense>
+      <ApplyPageInner />
+    </Suspense>
   );
 }
