@@ -25,7 +25,15 @@ import {
 
 // ─── Twilio send helper ───────────────────────────────────────────────────────
 
+function toE164(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return phone; // already formatted or international
+}
+
 async function sendSms(to: string, body: string): Promise<string> {
+  to = toE164(to);
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_PHONE_NUMBER;
