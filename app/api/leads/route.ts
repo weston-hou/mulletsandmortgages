@@ -38,11 +38,12 @@ export async function POST(req: NextRequest) {
       landed_at,
       referrer,
       posthog_id,
+      preferredContact,
     } = body;
 
-    if (!firstName || !lastName || !phone) {
+    if (!firstName || !lastName || !email) {
       return NextResponse.json(
-        { error: "first_name, last_name, and phone are required" },
+        { error: "first_name, last_name, and email are required" },
         { status: 400 }
       );
     }
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
       landed_at: landed_at ? Number(landed_at) : undefined,
       referrer: referrer || undefined,
       posthog_id: posthog_id || undefined,
+      preferred_contact: preferredContact ?? "email",
     });
 
     // Trigger SMS agent to schedule the first outreach

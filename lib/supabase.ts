@@ -66,6 +66,7 @@ export interface Lead {
   // Zach
   zach_notes?: string;
   assigned_to?: string;
+  preferred_contact?: "email" | "sms" | "voice";
   // A/B experiment
   experiment_id?: string;
   variant?: string;

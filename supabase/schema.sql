@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS leads (
 
   -- Zach's notes
   zach_notes           TEXT,
-  assigned_to          TEXT DEFAULT 'zach'
+  assigned_to          TEXT DEFAULT 'zach',
+  preferred_contact    TEXT DEFAULT 'email' CHECK (preferred_contact IN ('email','sms','voice'))
 );
 
 -- CONVERSATIONS TABLE

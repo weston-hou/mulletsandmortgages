@@ -40,6 +40,7 @@ export default function Home() {
     phone: "",
   });
   const [smsConsent, setSmsConsent] = useState(false);
+  const [contactPref, setContactPref] = useState<"email" | "sms" | "voice">("email");
 
   // Capture UTM + tracking context on mount
   useEffect(() => {
@@ -101,6 +102,7 @@ export default function Home() {
           zip: form.zip,
           propertyType: form.propertyType,
           downPayment: form.downPayment,
+          preferredContact: contactPref,
           ...trackingCtx,
         }),
       });
@@ -141,8 +143,12 @@ export default function Home() {
     "w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3.5 text-white text-base transition-all duration-200 appearance-none cursor-pointer";
   const canAdvanceStep2 =
     form.estimatedPrice && form.creditScore && form.state && form.zip && form.propertyType && form.downPayment;
+  const needsPhone = contactPref === "sms" || contactPref === "voice";
+  const needsConsent = contactPref === "sms" || contactPref === "voice";
   const canSubmit =
-    form.firstName && form.lastName && form.email && form.phone && smsConsent;
+    form.firstName && form.lastName && form.email &&
+    (!needsPhone || form.phone) &&
+    (!needsConsent || smsConsent);
 
   return (
     <main className="min-h-screen gradient-bg flex flex-col">
@@ -329,6 +335,28 @@ export default function Home() {
                 <p className="text-zinc-500 text-sm">Zach personally reviews every inquiry — no robo-calls.</p>
               </div>
 
+              {/* Contact preference */}
+              <div>
+                <label className="block text-xs text-zinc-400 mb-2">How should Zach reach you?</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["email", "sms", "voice"] as const).map((pref) => (
+                    <button
+                      key={pref}
+                      type="button"
+                      onClick={() => { setContactPref(pref); track("contact_pref_selected", { pref }); }}
+                      className={`py-3 rounded-xl border text-sm font-semibold transition-all duration-200 flex flex-col items-center gap-1 ${
+                        contactPref === pref
+                          ? "border-amber-400 bg-amber-400/10 text-amber-400"
+                          : "border-zinc-700 bg-zinc-900/60 text-zinc-400 hover:border-zinc-500"
+                      }`}
+                    >
+                      <span className="text-lg">{pref === "email" ? "✉️" : pref === "sms" ? "💬" : "📞"}</span>
+                      <span className="capitalize">{pref === "sms" ? "Text" : pref === "voice" ? "Call" : "Email"}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-zinc-400 mb-1.5">First name</label>
@@ -353,7 +381,9 @@ export default function Home() {
               </div>
 
               <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">Phone number</label>
+                <label className="block text-xs text-zinc-400 mb-1.5">
+                  Phone number {!needsPhone && <span className="text-zinc-600">(optional)</span>}
+                </label>
                 <input
                   type="tel"
                   className={inputClass}
@@ -363,23 +393,26 @@ export default function Home() {
                 />
               </div>
 
-              {/* SMS consent checkbox — required by TCPA + Twilio A2P */}
-              <div className="flex items-start gap-3 bg-zinc-800/50 border border-zinc-700 rounded-xl p-3.5">
-                <input
-                  id="sms-consent"
-                  type="checkbox"
-                  checked={smsConsent}
-                  onChange={(e) => {
-                    setSmsConsent(e.target.checked);
-                    track("sms_consent_checked", { checked: e.target.checked });
-                  }}
-                  className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-zinc-900 text-amber-400 accent-amber-400 flex-shrink-0 cursor-pointer"
-                />
-                <label htmlFor="sms-consent" className="text-xs text-zinc-400 leading-relaxed cursor-pointer">
-                  Yes, I agree to receive automated text messages and AI-generated voice calls from Zach Boyko (BrokerBoyko LLC) about my mortgage inquiry.{" "}
-                  <span className="text-zinc-500">Message frequency varies. Msg &amp; data rates may apply. Reply HELP for help or STOP to cancel anytime.</span>
-                </label>
-              </div>
+              {/* Consent — only shown for SMS/voice */}
+              {needsConsent && (
+                <div className="flex items-start gap-3 bg-zinc-800/50 border border-zinc-700 rounded-xl p-3.5">
+                  <input
+                    id="sms-consent"
+                    type="checkbox"
+                    checked={smsConsent}
+                    onChange={(e) => {
+                      setSmsConsent(e.target.checked);
+                      track("sms_consent_checked", { checked: e.target.checked, pref: contactPref });
+                    }}
+                    className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-zinc-900 text-amber-400 accent-amber-400 flex-shrink-0 cursor-pointer"
+                  />
+                  <label htmlFor="sms-consent" className="text-xs text-zinc-400 leading-relaxed cursor-pointer">
+                    {contactPref === "sms"
+                      ? <>Yes, I agree to receive automated text messages from Zach Boyko (BrokerBoyko LLC) about my mortgage inquiry. <span className="text-zinc-500">Msg &amp; data rates may apply. Reply STOP to cancel.</span></>
+                      : <>Yes, I agree to receive AI-generated voice calls from Zach Boyko (BrokerBoyko LLC) about my mortgage inquiry. <span className="text-zinc-500">Message frequency varies. Reply STOP to cancel.</span></>}
+                  </label>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setStep(2)} className="flex-1 py-3.5 rounded-xl border border-zinc-700 text-zinc-400 font-medium text-sm hover:border-zinc-500 hover:text-white transition-all duration-200">
