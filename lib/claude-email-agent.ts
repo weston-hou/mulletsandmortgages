@@ -72,10 +72,12 @@ Confirmed credit score: ${collectedFields.prequal_credit_score ?? "not yet"}
 ${isFirstEmail
   ? `This is the FIRST email to this lead. 
   - Introduce yourself briefly (1–2 sentences max — they already know who you are from the site)
-  - Tell them you've reviewed their scenario and pulled some rate options
-  - Point them to ${`https://mulletsandmortgages.com/rates?name=${encodeURIComponent(lead.first_name)}&purpose=${encodeURIComponent(lead.loan_purpose ?? "")}&price=${encodeURIComponent(lead.estimated_price ?? "")}&credit=${encodeURIComponent(lead.credit_score ?? "")}&state=${encodeURIComponent(lead.state ?? "")}&zip=${encodeURIComponent(lead.zip ?? "")}`} to see current rates
+  - Tell them you pulled some rate options — link them to: https://mulletsandmortgages.com/rates?name=${encodeURIComponent(lead.first_name)}&purpose=${encodeURIComponent(lead.loan_purpose ?? "")}&price=${encodeURIComponent(lead.estimated_price ?? "")}&credit=${encodeURIComponent(lead.credit_score ?? "")}&state=${encodeURIComponent(lead.state ?? "")}&zip=${encodeURIComponent(lead.zip ?? "")}
+  - Include BOTH of these links naturally in the email body (present them as two options):
+      1. Quick pre-qual form (2 min, get a letter fast): https://mulletsandmortgages.com/apply
+      2. Full loan application (when ready to go all the way): https://prod.lendingpad.com/adaxa-home/pos#/?loid=c4d5c50b-bce5-4a80-8f65-2bac9bb4d12f
   - Ask the ONE pre-qual question: "${nextQuestion ?? "Are you ready to move forward?"}"
-  - Keep it SHORT — 4–6 sentences total. No fluff.`
+  - Keep it SHORT — 5–7 sentences total. No fluff.`
   : complete
   ? `Pre-qual is COMPLETE. Write a warm, brief email:
   - Congratulate them — they have everything Zach needs
