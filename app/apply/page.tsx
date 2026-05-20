@@ -179,7 +179,7 @@ function ApplyPageInner() {
     state:          searchParams.get("state")          ?? "",
     zip:            searchParams.get("zip")            ?? "",
     downPayment:    searchParams.get("downPayment")    ?? "",
-    creditScore:    searchParams.get("creditScore")    ?? "",
+    creditScore:    searchParams.get("creditScore") ?? searchParams.get("credit_score") ?? "",
     employment:     "",
     income:         "",
     liabilities:    "",
@@ -196,6 +196,7 @@ function ApplyPageInner() {
     return 3; // jump straight to employment/income since contact info is pre-filled
   }
 
+  const isPreFilled = !!(searchParams.get("email") && searchParams.get("firstName"));
   const [step, setStep]       = useState(() => getStartStep(prefill));
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
@@ -207,10 +208,60 @@ function ApplyPageInner() {
   const update = (field: keyof FormState, value: string) =>
     setForm(prev => ({ ...prev, [field]: value }));
 
-  const next = () => { setError(""); setStep(s => Math.min(s + 1, TOTAL_STEPS + 1)); };
+  const next = () => {
+    setError("");
+    // If pre-filled from email link, skip contact step (step 4) — we already have their info
+    if (isPreFilled && step === 3) {
+      handleSubmitDirect();
+      return;
+    }
+    setStep(s => Math.min(s + 1, TOTAL_STEPS + 1));
+  };
   const back = () => { setError(""); setStep(s => Math.max(s - 1, 1)); };
 
   // ── Submit ──────────────────────────────────────────────────────────────────
+
+  // Called when submitting from step 3 with pre-filled contact info (email preference leads)
+  const handleSubmitDirect = async () => {
+    if (!prefill.email || !prefill.firstName) { setStep(4); return; } // fallback to contact step
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName:      form.firstName.trim(),
+          lastName:       form.lastName.trim(),
+          email:          form.email.trim().toLowerCase(),
+          phone:          form.phone ? e164(form.phone) : undefined,
+          loanPurpose:    form.loanPurpose,
+          estimatedPrice: form.estimatedPrice,
+          propertyType:   form.propertyType,
+          state:          form.state,
+          zip:            form.zip,
+          downPayment:    form.downPayment,
+          creditScore:    form.creditScore,
+          prequal_employment:   form.employment,
+          prequal_income:       form.income,
+          prequal_liabilities:  form.liabilities,
+          prequal_credit_score: form.creditScore,
+          prequal_zip:          form.zip,
+          preferredContact: "email",
+          utm_source: "email_agent",
+          utm_medium: "prequal_link",
+        }),
+      });
+      if (!res.ok) throw new Error("Submit failed");
+      const data = await res.json();
+      setLeadId(data.id ?? null);
+      setStep(TOTAL_STEPS + 1);
+    } catch {
+      setError("Something went wrong — please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!smsConsent) { setError("Please agree to receive text messages to continue."); return; }

@@ -72,12 +72,14 @@ Confirmed credit score: ${collectedFields.prequal_credit_score ?? "not yet"}
 ${isFirstEmail
   ? `This is the FIRST email to this lead. 
   - Introduce yourself briefly (1–2 sentences max — they already know who you are from the site)
-  - They just came from the rates page so don't say "I pulled rates" — instead acknowledge their loan scenario (${lead.loan_purpose ?? "home purchase"}, ${lead.estimated_price ?? ""}, ${lead.state ?? ""}) and say you wanted to follow up personally
+  - They just came from the rates page — acknowledge their loan scenario (${lead.loan_purpose ?? "home purchase"}, ${lead.estimated_price ?? ""}, ${lead.state ?? ""}) and say you wanted to follow up
+  - Do NOT use the word "personally" anywhere
   - Include BOTH of these links naturally in the email body:
-      1. Quick pre-qual form (2 min, they get a pre-qual letter): https://mulletsandmortgages.com/apply?firstName=${encodeURIComponent(lead.first_name)}&lastName=${encodeURIComponent(lead.last_name ?? "")}&email=${encodeURIComponent(lead.email ?? "")}&phone=${encodeURIComponent(lead.phone ?? "")}&loanPurpose=${encodeURIComponent(lead.loan_purpose ?? "")}&estimatedPrice=${encodeURIComponent(lead.estimated_price ?? "")}&creditScore=${encodeURIComponent(lead.credit_score ?? "")}&state=${encodeURIComponent(lead.state ?? "")}&zip=${encodeURIComponent(lead.zip ?? "")}&propertyType=${encodeURIComponent(lead.property_type ?? "")}&downPayment=${encodeURIComponent(lead.down_payment ?? "")}
-      2. Full loan application: https://prod.lendingpad.com/adaxa-home/pos#/?loid=c4d5c50b-bce5-4a80-8f65-2bac9bb4d12f
+      1. Quick pre-qual form — frame it as: "If you want to get pre-qualified fast so you're ready to make an offer, it takes about 2 minutes": https://mulletsandmortgages.com/apply?firstName=${encodeURIComponent(lead.first_name)}&lastName=${encodeURIComponent(lead.last_name ?? "")}&email=${encodeURIComponent(lead.email ?? "")}&phone=${encodeURIComponent(lead.phone ?? "")}&loanPurpose=${encodeURIComponent(lead.loan_purpose ?? "")}&estimatedPrice=${encodeURIComponent(lead.estimated_price ?? "")}&creditScore=${encodeURIComponent(lead.credit_score ?? "")}&state=${encodeURIComponent(lead.state ?? "")}&zip=${encodeURIComponent(lead.zip ?? "")}&propertyType=${encodeURIComponent(lead.property_type ?? "")}&downPayment=${encodeURIComponent(lead.down_payment ?? "")}
+      2. Full loan application (when they're ready to go all the way): https://prod.lendingpad.com/adaxa-home/pos#/?loid=c4d5c50b-bce5-4a80-8f65-2bac9bb4d12f
+  - End with: tell them to reply, call, or text with any questions — include Zach's number (602) 410-1334
   - Ask the ONE pre-qual question: "${nextQuestion ?? "Are you ready to move forward?"}"
-  - Keep it SHORT — 4–6 sentences total. No fluff.`
+  - Keep it SHORT — 5–7 sentences total. No fluff.`
   : complete
   ? `Pre-qual is COMPLETE. Write a warm, brief email:
   - Congratulate them — they have everything Zach needs
