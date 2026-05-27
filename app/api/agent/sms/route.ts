@@ -304,6 +304,10 @@ async function handleSendScheduled(): Promise<NextResponse> {
       }
 
       // Send via Twilio
+      if (!lead.phone) {
+        console.warn(`[SMS agent] Lead ${lead.id} has no phone number, skipping`);
+        return NextResponse.json({ ok: true, skipped: true });
+      }
       const sid = await sendSms(lead.phone, messageBody);
 
       // Save outbound message to conversations
