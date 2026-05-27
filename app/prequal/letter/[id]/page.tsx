@@ -13,15 +13,16 @@ import { notFound } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function PrequalLetterPage({ params }: Props) {
-  const lead = await db.leads.getById(params.id);
+  const { id } = await params;
+  const lead = await db.leads.getById(id);
   if (!lead || !lead.prequal_complete) notFound();
 
   // Find the latest prequal letter stored in conversations
-  const convos = await db.conversations.forLead(params.id);
+  const convos = await db.conversations.forLead(id);
   const letterConvo = convos
     .filter(c => (c.metadata as Record<string, unknown>)?.type === "prequal_letter")
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
