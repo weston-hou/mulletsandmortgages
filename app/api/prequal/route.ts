@@ -147,7 +147,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Store letter HTML in conversations table for retrieval
     await db.conversations.insert({
       lead_id: lead.id,
-      channel:   "system",
+      channel:   "email",
       direction: "outbound",
       body:      letterHtml,
       ai_generated: false,

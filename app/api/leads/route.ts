@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       first_name: firstName,
       last_name: lastName,
       email: email || undefined,
-      phone,
+      phone: phone || null,
       loan_purpose: loanPurpose || undefined,
       estimated_price: estimatedPrice || undefined,
       credit_score: creditScore || undefined,

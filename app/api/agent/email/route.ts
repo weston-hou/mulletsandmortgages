@@ -184,6 +184,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         last_contacted_at: "is.null",
         email: "not.is.null",
         stage: "eq.new",
+        utm_source: "not.eq.rates_quote", // skip leads who got rates email
         limit: "20",
         order: "created_at.asc",
       });
