@@ -137,7 +137,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       recipient: {
         name: lead.prequal_full_name ?? `${lead.first_name} ${lead.last_name}`,
         email: lead.email,
-        phone: lead.phone,
+        phone: lead.phone ?? undefined,
       },
       loanPurpose: lead.loan_purpose,
       estimatedPrice: lead.estimated_price,
