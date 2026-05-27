@@ -116,7 +116,7 @@ function RatesContent() {
             </div>
           )}
           <h1 className="text-3xl sm:text-4xl font-black text-white mb-2">
-            Hey {name}, here are your options
+            {quoted ? `While you wait, ${name}...` : `Hey ${name}, here are your options`}
           </h1>
           <p className="text-zinc-400">
             Based on: <span className="text-white">{purpose}</span>
@@ -125,6 +125,17 @@ function RatesContent() {
             {state && <> · <span className="text-white">{state}{zip ? ` ${zip}` : ""}</span></>}
           </p>
         </div>
+
+        {/* Market rates disclaimer */}
+        {quoted && (
+          <div className="mb-6 rounded-xl border border-zinc-700 bg-zinc-900/60 px-5 py-4 flex gap-3 items-start">
+            <span className="text-lg mt-0.5">📊</span>
+            <div>
+              <p className="text-white text-sm font-semibold mb-0.5">These are general market rates</p>
+              <p className="text-zinc-400 text-sm">The rates below are pulled from today&apos;s market averages. Your <strong className="text-amber-400">personalized rates — priced to your exact loan</strong> — are in the email we just sent you.</p>
+            </div>
+          </div>
+        )}
 
         {/* Rate cards */}
         <div className="space-y-3 mb-10">
@@ -141,7 +152,7 @@ function RatesContent() {
             <>
               {asOf && (
                 <div className="text-xs text-zinc-600 mb-3">
-                  Market rates as of {new Date(asOf).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Personalized to your credit &amp; scenario
+                  General market snapshot as of {new Date(asOf).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Your custom rates are in the email
                 </div>
               )}
               {cards.map((r) => (
