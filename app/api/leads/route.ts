@@ -81,6 +81,7 @@ export async function POST(req: NextRequest) {
     };
 
     const pref = preferredContact ?? "email";
+    const skipEmailAgent = utm_source === "rates_quote"; // rates quote email already sent
 
     if (pref === "sms" || pref === "voice") {
       // SMS agent — schedules outreach via Twilio
@@ -89,8 +90,9 @@ export async function POST(req: NextRequest) {
         headers: agentHeaders,
         body: JSON.stringify({ action: "trigger", lead_id: lead.id }),
       }).catch(err => console.error("[POST /api/leads] SMS trigger failed:", err));
-    } else {
+    } else if (!skipEmailAgent) {
       // Email agent — sends intro email as Zach immediately
+      // Skip if the rates quote already sent (utm_source=rates_quote)
       fetch(`${baseUrl}/api/agent/email`, {
         method: "POST",
         headers: agentHeaders,

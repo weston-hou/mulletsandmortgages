@@ -192,7 +192,7 @@ function ApplyPageInner() {
     currentMortgage: "",
     sellCurrentHome: "",
     otherDebt:      "",
-    requestedLoanAmount: "",
+    requestedLoanAmount: searchParams.get("requestedLoanAmount") ?? "",
     firstName:      searchParams.get("firstName")      ?? "",
     lastName:       searchParams.get("lastName")       ?? "",
     email:          searchParams.get("email")          ?? "",

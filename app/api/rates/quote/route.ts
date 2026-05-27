@@ -253,17 +253,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     // Build pre-qual URL pre-filled with their info
+    // Pre-calculate requestedLoanAmount = price - downPayment so the form doesn't fail
+    const requestedLoanAmount = String(loanAmt);
     const prequal_url = "https://mulletsandmortgages.com/apply?" + new URLSearchParams({
       firstName,
       lastName,
       email,
-      loanPurpose:    purpose,
-      estimatedPrice: priceStr,
-      creditScore:    credit,
+      loanPurpose:          purpose,
+      estimatedPrice:       priceStr,
+      creditScore:          credit,
       state,
       zip,
       propertyType,
-      downPayment:    downStr,
+      downPayment:          downStr,
+      requestedLoanAmount,
     }).toString();
 
     // Build and send email
