@@ -9,6 +9,7 @@
 
 import { db } from "@/lib/supabase";
 import { notFound } from "next/navigation";
+import PrintButton from "./print-button";
 
 export const dynamic = "force-dynamic";
 
@@ -38,16 +39,7 @@ export default async function PrequalLetterPage({ params }: Props) {
         position: "fixed", top: 16, right: 16, zIndex: 100,
         display: "flex", gap: 8,
       }}>
-        <button
-          onClick={() => window.print()}
-          style={{
-            background: "#f59e0b", color: "#000", fontWeight: 700,
-            padding: "10px 20px", borderRadius: 8, border: "none",
-            cursor: "pointer", fontSize: 14,
-          }}
-        >
-          🖨️ Print / Save PDF
-        </button>
+        <PrintButton />
       </div>
 
       {/* Letter renders as full HTML via dangerouslySetInnerHTML — safe, server-generated only */}
