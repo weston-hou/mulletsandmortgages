@@ -90,14 +90,6 @@ export async function POST(req: NextRequest) {
         headers: agentHeaders,
         body: JSON.stringify({ action: "trigger", lead_id: lead.id }),
       }).catch(err => console.error("[POST /api/leads] SMS trigger failed:", err));
-    } else if (!skipEmailAgent) {
-      // Email agent — sends intro email as Zach immediately
-      // Skip if the rates quote already sent (utm_source=rates_quote)
-      fetch(`${baseUrl}/api/agent/email`, {
-        method: "POST",
-        headers: agentHeaders,
-        body: JSON.stringify({ action: "trigger", lead_id: lead.id }),
-      }).catch(err => console.error("[POST /api/leads] Email trigger failed:", err));
     }
 
     return NextResponse.json({ id: lead.id, success: true }, { status: 201 });
