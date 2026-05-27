@@ -544,6 +544,7 @@ async function handleTwilioWebhook(req: NextRequest): Promise<NextResponse> {
       `You can view and download it here: ${fieldUpdates.prequal_letter_url} ` +
       `Zach will be in touch shortly. Reply STOP to opt out.`;
     try {
+      if (!lead.phone) throw new Error('Lead has no phone number');
       const sid = await sendSms(lead.phone, letterMsg);
       await db.conversations.insert({
         lead_id: lead.id,
@@ -654,6 +655,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
       if (lead.sms_opted_out) {
         return NextResponse.json({ error: "Lead has opted out of SMS" }, { status: 400 });
+      }
+      if (!lead.phone) {
+        return NextResponse.json({ error: 'Lead has no phone number' }, { status: 400 });
       }
       const sid = await sendSms(lead.phone, body.message);
       await db.conversations.insert({
