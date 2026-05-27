@@ -34,6 +34,7 @@ export default function Home() {
     zip: "",
     propertyType: "",
     downPayment: "",
+    veteranStatus: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -81,6 +82,7 @@ export default function Home() {
       zip: form.zip,
       property_type: form.propertyType,
       down_payment: form.downPayment,
+      veteran_status: form.veteranStatus,
     });
     track("lead_submitted", { ...form });
 
@@ -102,6 +104,7 @@ export default function Home() {
           zip: form.zip,
           propertyType: form.propertyType,
           downPayment: form.downPayment,
+          veteranStatus: form.veteranStatus,
           preferredContact: contactPref,
           ...trackingCtx,
         }),
@@ -123,6 +126,25 @@ export default function Home() {
       console.error("Failed to persist lead:", e);
     }
 
+    // Trigger QuickQuote rates email (fire-and-forget — non-blocking)
+    fetch("/api/rates/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        purpose: form.loanPurpose,
+        price: form.estimatedPrice,
+        downPayment: form.downPayment,
+        credit: form.creditScore,
+        state: form.state,
+        zip: form.zip,
+        propertyType: form.propertyType,
+        veteranStatus: form.veteranStatus,
+      }),
+    }).catch((e) => console.error("Rates quote trigger failed:", e));
+
     // Pass form data to results page via query params (non-sensitive only)
     const params = new URLSearchParams({
       purpose: form.loanPurpose,
@@ -132,7 +154,10 @@ export default function Home() {
       zip: form.zip,
       type: form.propertyType,
       down: form.downPayment,
+      veteran: form.veteranStatus,
       name: form.firstName,
+      email: form.email,
+      quoted: "1",
     });
     router.push(`/rates?${params.toString()}`);
   };
@@ -142,7 +167,7 @@ export default function Home() {
   const selectClass =
     "w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3.5 text-white text-base transition-all duration-200 appearance-none cursor-pointer";
   const canAdvanceStep2 =
-    form.estimatedPrice && form.creditScore && form.state && form.zip && form.propertyType && form.downPayment;
+    form.estimatedPrice && form.creditScore && form.state && form.zip && form.propertyType && form.downPayment && form.veteranStatus;
   const needsPhone = contactPref === "sms" || contactPref === "voice";
   const needsConsent = contactPref === "sms" || contactPref === "voice";
   const canSubmit =
@@ -236,28 +261,40 @@ export default function Home() {
               {/* Row: Price + Down payment */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1.5">Home price / loan amount</label>
-                  <select className={selectClass} value={form.estimatedPrice} onChange={(e) => update("estimatedPrice", e.target.value)}>
-                    <option value="">Select range</option>
-                    <option>Under $200k</option>
-                    <option>$200k – $400k</option>
-                    <option>$400k – $600k</option>
-                    <option>$600k – $800k</option>
-                    <option>$800k – $1M</option>
-                    <option>Over $1M</option>
-                  </select>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Home price</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">$</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className={inputClass + " pl-7"}
+                      placeholder="450,000"
+                      value={form.estimatedPrice}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, "");
+                        const formatted = raw ? Number(raw).toLocaleString() : "";
+                        update("estimatedPrice", formatted);
+                      }}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs text-zinc-400 mb-1.5">Down payment</label>
-                  <select className={selectClass} value={form.downPayment} onChange={(e) => update("downPayment", e.target.value)}>
-                    <option value="">Select</option>
-                    <option>Less than 5%</option>
-                    <option>5% – 9%</option>
-                    <option>10% – 14%</option>
-                    <option>15% – 19%</option>
-                    <option>20%+</option>
-                    <option>N/A (refi)</option>
-                  </select>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">$</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className={inputClass + " pl-7"}
+                      placeholder="90,000"
+                      value={form.downPayment}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, "");
+                        const formatted = raw ? Number(raw).toLocaleString() : "";
+                        update("downPayment", formatted);
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -287,6 +324,27 @@ export default function Home() {
                   <option>Below 600</option>
                   <option>Not sure</option>
                 </select>
+              </div>
+
+              {/* Veteran status */}
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Are you a veteran or active duty service member?</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["Yes", "No"] as const).map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => update("veteranStatus", val)}
+                      className={`py-3 rounded-xl border text-sm font-semibold transition-all duration-200 ${
+                        form.veteranStatus === val
+                          ? "border-amber-400 bg-amber-400/10 text-amber-400"
+                          : "border-zinc-700 bg-zinc-900/60 text-zinc-400 hover:border-zinc-500"
+                      }`}
+                    >
+                      {val === "Yes" ? "🎖️ Yes" : "No"}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Row: State + Zip */}

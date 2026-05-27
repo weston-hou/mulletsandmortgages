@@ -53,6 +53,8 @@ function RatesContent() {
   const state = params.get("state") ?? "";
   const zip = params.get("zip") ?? "";
   const propertyType = params.get("type") ?? "";
+  const email = params.get("email") ?? "";
+  const quoted = params.get("quoted") === "1";
 
   const [cards, setCards]     = useState<RateCard[]>([]);
   const [ratesLoading, setRatesLoading] = useState(true);
@@ -99,10 +101,20 @@ function RatesContent() {
 
         {/* Header */}
         <div className="mb-8 animate-slide-up">
-          <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-1.5 text-green-400 text-sm font-medium mb-4">
-            <span>✓</span>
-            <span>You&apos;re in — Zach is reviewing your scenario</span>
-          </div>
+          {quoted && (
+            <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 text-blue-400 text-sm font-medium mb-4">
+              <span>✉️</span>
+              <span>
+                Your personalized rates are on their way — check {email ? <><strong>{email}</strong></> : "your inbox"} in a few minutes
+              </span>
+            </div>
+          )}
+          {!quoted && (
+            <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-1.5 text-green-400 text-sm font-medium mb-4">
+              <span>✓</span>
+              <span>You&apos;re in — Zach is reviewing your scenario</span>
+            </div>
+          )}
           <h1 className="text-3xl sm:text-4xl font-black text-white mb-2">
             Hey {name}, here are your options
           </h1>
