@@ -106,8 +106,8 @@ export default function Home() {
           downPayment: form.downPayment,
           veteranStatus: form.veteranStatus,
           preferredContact: contactPref,
-          utm_source: "rates_quote",
           ...trackingCtx,
+          utm_source: "rates_quote", // override any UTM from URL
         }),
       });
 
