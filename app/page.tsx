@@ -467,8 +467,9 @@ export default function Home() {
                   />
                   <label htmlFor="sms-consent" className="text-xs text-zinc-400 leading-relaxed cursor-pointer">
                     {contactPref === "sms"
-                      ? <>Yes, I agree to receive automated text messages from Zach Boyko (BrokerBoyko LLC) about my mortgage inquiry. <span className="text-zinc-500">Msg &amp; data rates may apply. Reply STOP to cancel.</span></>
-                      : <>Yes, I agree to receive AI-generated voice calls from Zach Boyko (BrokerBoyko LLC) about my mortgage inquiry. <span className="text-zinc-500">Message frequency varies. Reply STOP to cancel.</span></>}
+                      ? <>I agree to receive recurring automated text messages and calls from Mullets &amp; Mortgages at the phone number I provide, including messages about mortgage rates, loan options, pre-qualification, and my mortgage inquiry. Consent is not a condition of purchase. Message frequency varies. <span className="text-zinc-500">Msg &amp; data rates may apply. Reply STOP to opt out and HELP for help.</span> View our <a href="/terms" className="underline text-zinc-400 hover:text-white">Terms</a> and <a href="/privacy" className="underline text-zinc-400 hover:text-white">Privacy Policy</a>.</>
+                      : <>I agree to receive recurring automated calls from Mullets &amp; Mortgages at the phone number I provide, including calls about mortgage rates, loan options, pre-qualification, and my mortgage inquiry. Consent is not a condition of purchase. Message frequency varies. <span className="text-zinc-500">Msg &amp; data rates may apply. Reply STOP to opt out and HELP for help.</span> View our <a href="/terms" className="underline text-zinc-400 hover:text-white">Terms</a> and <a href="/privacy" className="underline text-zinc-400 hover:text-white">Privacy Policy</a>.</>
+                    }
                   </label>
                 </div>
               )}
