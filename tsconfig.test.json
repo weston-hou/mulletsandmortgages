@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vitest/globals", "node"]
+  },
+  "include": [
+    "vitest.setup.ts",
+    "vitest.config.mts",
+    "playwright.config.ts",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "e2e/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}
