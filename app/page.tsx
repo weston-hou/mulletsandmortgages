@@ -20,11 +20,14 @@ const US_STATES = [
   "WI","WY",
 ];
 
+// Isolated so the impure clock read doesn't happen in render (react-hooks/purity).
+const nowMs = () => Date.now();
+
 export default function Home() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const stepStartTime = useRef<number>(Date.now());
+  const stepStartTime = useRef<number>(0); // set on mount/step change via effect below
 
   const [form, setForm] = useState({
     loanPurpose: "",
@@ -59,7 +62,7 @@ export default function Home() {
     setForm((prev) => ({ ...prev, [field]: value }));
 
   const advanceStep = (nextStep: number) => {
-    const timeOnStep = Date.now() - stepStartTime.current;
+    const timeOnStep = nowMs() - stepStartTime.current;
     track("step_completed", { step, next_step: nextStep, time_on_step_ms: timeOnStep, ...form });
     setStep(nextStep);
   };

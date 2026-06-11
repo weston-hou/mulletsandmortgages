@@ -70,11 +70,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "campaign_slug is required" }, { status: 400 });
     }
 
-    // Validate file types
-    const ALLOWED_TYPES = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/webm", "video/mov"];
+    // Validate file types — accept any video/* MIME (default to mp4 when blank)
     for (const file of files) {
       const type = file.type || "video/mp4";
-      if (!ALLOWED_TYPES.some(t => type.startsWith("video/"))) {
+      if (!type.startsWith("video/")) {
         return NextResponse.json(
           { error: `File "${file.name}" is not a video file` },
           { status: 400 }

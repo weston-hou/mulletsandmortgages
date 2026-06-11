@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { track } from "@/lib/analytics";
 
@@ -84,12 +85,12 @@ function RatesContent() {
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-5 max-w-6xl mx-auto w-full">
         <div className="flex items-center gap-2">
-          <a href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <span className="text-2xl">✂️</span>
             <span className="font-bold text-white text-lg tracking-tight">
               Mullets <span className="text-amber-400">&</span> Mortgages
             </span>
-          </a>
+          </Link>
         </div>
         <div className="hidden sm:flex items-center gap-1 text-zinc-400 text-sm">
           <span className="text-green-400">●</span>

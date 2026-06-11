@@ -1,8 +1,10 @@
+import Link from "next/link";
+
 export default function Terms() {
   return (
     <main className="min-h-screen gradient-bg px-6 py-16">
       <div className="max-w-2xl mx-auto">
-        <a href="/" className="text-amber-400 text-sm hover:underline mb-8 inline-block">← Back</a>
+        <Link href="/" className="text-amber-400 text-sm hover:underline mb-8 inline-block">← Back</Link>
         <h1 className="text-3xl font-black text-white mb-6">Terms &amp; Conditions</h1>
         <div className="text-zinc-400 space-y-4 text-sm leading-relaxed">
           <p>By using mulletsandmortgages.com, you agree to these terms. This site is operated by BrokerBoyko LLC, an independent mortgage brokerage.</p>

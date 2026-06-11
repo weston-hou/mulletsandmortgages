@@ -23,7 +23,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
-import { runPrequalEngine, formatCurrency, monthlyPayment } from "@/lib/prequal-engine";
+import { runPrequalEngine, formatCurrency } from "@/lib/prequal-engine";
 import { renderPrequalLetter } from "@/lib/documents";
 import { sendEmail, buildPrequalEmailHtml } from "@/lib/email";
 

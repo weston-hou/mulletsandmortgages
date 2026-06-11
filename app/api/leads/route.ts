@@ -33,7 +33,6 @@ export async function POST(req: NextRequest) {
       utm_medium,
       utm_campaign,
       utm_content,
-      utm_term,
       clicked_at,
       landed_at,
       referrer,
@@ -81,7 +80,6 @@ export async function POST(req: NextRequest) {
     };
 
     const pref = preferredContact ?? "email";
-    const skipEmailAgent = utm_source === "rates_quote"; // rates quote email already sent
 
     if (pref === "sms" || pref === "voice") {
       // SMS agent — schedules outreach via Twilio

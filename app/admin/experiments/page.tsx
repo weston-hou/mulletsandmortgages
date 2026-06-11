@@ -11,7 +11,7 @@
  *   - Controls to activate/pause/create experiments
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -130,9 +130,9 @@ function StatBar({ label, a, b, aTotal, bTotal }: {
 }
 
 function ExperimentCard({
-  exp, adminKey, onToggle,
+  exp, onToggle,
 }: {
-  exp: Experiment; adminKey: string; onToggle: (id: string, active: boolean) => void;
+  exp: Experiment; onToggle: (id: string, active: boolean) => void;
 }) {
   const a = exp.results?.a;
   const b = exp.results?.b;
@@ -453,7 +453,7 @@ export default function ExperimentsPage() {
           <div className="grid gap-4 md:grid-cols-2">
             {experiments.map(exp => (
               <ExperimentCard
-                key={exp.id} exp={exp} adminKey={adminKey}
+                key={exp.id} exp={exp}
                 onToggle={toggling ? () => {} : handleToggle}
               />
             ))}

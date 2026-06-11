@@ -67,32 +67,6 @@ async function sendSms(to: string, body: string): Promise<string> {
   return data.sid;
 }
 
-// ─── Business-hours helper (America/Phoenix) ─────────────────────────────────
-
-function getPhoenixHour(): number {
-  return Number(
-    new Date().toLocaleString("en-US", {
-      timeZone: "America/Phoenix",
-      hour: "numeric",
-      hour12: false,
-    })
-  );
-}
-
-function getPhoenixDay(): number {
-  // 0 = Sunday, 6 = Saturday
-  return new Date(
-    new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" })
-  ).getDay();
-}
-
-function isBusinessHours(): boolean {
-  const h = getPhoenixHour();
-  const d = getPhoenixDay();
-  // Mon–Sat, 8am–8pm Phoenix time
-  return d >= 1 && d <= 6 && h >= 8 && h < 20;
-}
-
 /**
  * Calculate when to send the first message.
  * - Within business hours: random 4–9 min delay

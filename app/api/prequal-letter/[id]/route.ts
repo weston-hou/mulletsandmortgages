@@ -55,7 +55,7 @@ function renderLetter(lead: {
   created_at: string;
 }): string {
   const borrowerName = lead.prequal_full_name ?? `${lead.first_name} ${lead.last_name}`;
-  const { amount, label } = parsePriceRange(lead.estimated_price);
+  const { amount } = parsePriceRange(lead.estimated_price);
   const issueDate = formatDate(lead.prequal_completed_at ?? lead.created_at);
   const expiryDate = formatDate(
     new Date(new Date(lead.prequal_completed_at ?? lead.created_at).getTime() + 45 * 86400000).toISOString()

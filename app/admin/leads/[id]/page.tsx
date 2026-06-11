@@ -226,6 +226,7 @@ export default function LeadDetailPage({
 
   useEffect(() => {
     const key = getCookie("admin_session") ?? "";
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- read client-only cookie on mount (SSR-safe)
     setAdminKey(key);
   }, []);
 
@@ -248,6 +249,7 @@ export default function LeadDetailPage({
   }, [id, adminKey]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch lead once adminKey is known; loading sync is intentional
     if (adminKey) fetchLead();
   }, [adminKey, fetchLead]);
 

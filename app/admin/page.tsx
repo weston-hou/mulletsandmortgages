@@ -9,6 +9,22 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+
+// Isolated so the impure clock read doesn't happen in render (react-hooks/purity).
+const nowMs = () => Date.now();
+
+// Hoisted to module scope — defining a component inside render is disallowed
+// (react-hooks "Cannot create components during render").
+function SortIcon({ field, sortField, sortOrder }: {
+  field: string; sortField: string; sortOrder: "asc" | "desc";
+}) {
+  return sortField === field ? (
+    <span className="ml-1 opacity-70">{sortOrder === "asc" ? "↑" : "↓"}</span>
+  ) : (
+    <span className="ml-1 opacity-20">↕</span>
+  );
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -280,11 +296,12 @@ function Dashboard({ adminKey }: { adminKey: string }) {
   }, [adminKey, stageFilter, sourceFilter, sortField, sortOrder]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount; loading state sync is intentional
     fetchData();
   }, [fetchData]);
 
   // ── Stats ──
-  const now = Date.now();
+  const now = nowMs();
   const weekAgo = now - 7 * 86400000;
   const total = leads.length;
   const newThisWeek = leads.filter(
@@ -320,13 +337,6 @@ function Dashboard({ adminKey }: { adminKey: string }) {
     }
   };
 
-  const SortIcon = ({ field }: { field: string }) =>
-    sortField === field ? (
-      <span className="ml-1 opacity-70">{sortOrder === "asc" ? "↑" : "↓"}</span>
-    ) : (
-      <span className="ml-1 opacity-20">↕</span>
-    );
-
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       {/* Header */}
@@ -347,18 +357,18 @@ function Dashboard({ adminKey }: { adminKey: string }) {
           >
             ↻ Refresh
           </button>
-          <a
+          <Link
             href="/admin/experiments"
             className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors"
           >
             🧪 A/B
-          </a>
-          <a
+          </Link>
+          <Link
             href="/"
             className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors"
           >
             ← Site
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -463,7 +473,7 @@ function Dashboard({ adminKey }: { adminKey: string }) {
                           className="text-left px-4 py-3 font-medium cursor-pointer hover:text-zinc-300"
                           onClick={() => handleSort("first_name")}
                         >
-                          Name <SortIcon field="first_name" />
+                          Name <SortIcon field="first_name" sortField={sortField} sortOrder={sortOrder} />
                         </th>
                         <th className="text-left px-4 py-3 font-medium">Phone</th>
                         <th className="text-left px-4 py-3 font-medium">Loan Purpose</th>
@@ -476,7 +486,7 @@ function Dashboard({ adminKey }: { adminKey: string }) {
                           className="text-left px-4 py-3 font-medium cursor-pointer hover:text-zinc-300"
                           onClick={() => handleSort("created_at")}
                         >
-                          Created <SortIcon field="created_at" />
+                          Created <SortIcon field="created_at" sortField={sortField} sortOrder={sortOrder} />
                         </th>
                         <th className="text-left px-4 py-3 font-medium">Actions</th>
                       </tr>
@@ -793,6 +803,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     const saved = getCookie("admin_session");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- read client-only cookie on mount (SSR-safe)
     if (saved) setAdminKey(saved);
     setChecked(true);
   }, []);

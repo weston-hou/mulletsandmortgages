@@ -9,7 +9,6 @@
  *   3. Handoff to full application when ready
  */
 
-import { db } from "@/lib/supabase";
 import type { Lead, Conversation } from "@/lib/supabase";
 import type { PrequalFields } from "@/lib/scripts";
 

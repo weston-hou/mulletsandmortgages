@@ -16,7 +16,7 @@
  *   5. Confirmation
  */
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -210,7 +210,7 @@ function ApplyPageInner() {
   const [step, setStep]       = useState(() => getStartStep(prefill));
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
-  const [leadId, setLeadId]   = useState<string | null>(null);
+  const [, setLeadId]         = useState<string | null>(null);
   const [smsConsent, setSmsConsent] = useState(false);
 
   const [form, setForm] = useState<FormState>(prefill);
@@ -732,7 +732,7 @@ function ApplyPageInner() {
           <div className="text-center py-8">
             <div className="text-5xl mb-4">🎉</div>
             <h2 className="text-2xl font-black text-white mb-3">
-              You're in the queue, {form.firstName}!
+              You&apos;re in the queue, {form.firstName}!
             </h2>
             <p className="text-zinc-400 text-sm leading-relaxed mb-6 max-w-sm mx-auto">
               Zach will personally review your scenario and reach out via text within a few hours.

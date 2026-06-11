@@ -17,7 +17,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
-import { renderDocument, type DocumentType, type DocumentContext } from "@/lib/documents";
+import { type DocumentType } from "@/lib/documents";
 import { sendEmail } from "@/lib/email";
 import { createHmac } from "crypto";
 
@@ -130,26 +130,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://mulletsandmortgages.com";
     const signUrl = buildSignUrl(lead_id, type, baseUrl);
-
-    // Build document context
-    const ctx: DocumentContext = {
-      leadId: lead_id,
-      recipient: {
-        name: lead.prequal_full_name ?? `${lead.first_name} ${lead.last_name}`,
-        email: lead.email,
-        phone: lead.phone ?? undefined,
-      },
-      loanPurpose: lead.loan_purpose,
-      estimatedPrice: lead.estimated_price,
-      creditScore: lead.credit_score,
-      state: lead.state,
-      zip: lead.zip,
-      propertyType: lead.property_type,
-      downPayment: lead.down_payment,
-    };
-
-    // Render document HTML (with sign button)
-    const docHtml = renderDocument(type, ctx, signUrl);
 
     // Build and send email
     const { subject } = DOC_LABELS[type];
