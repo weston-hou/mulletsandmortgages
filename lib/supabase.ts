@@ -147,11 +147,6 @@ export interface ContentClip {
   avg_loan_range?: string;
   top_states?: string[];
   top_purposes?: string[];
-  // Creatomate render URLs (populated via webhook)
-  render_tiktok_url?: string;
-  render_instagram_url?: string;
-  render_youtube_url?: string;
-  render_linkedin_url?: string;
 }
 
 // ─── Client ──────────────────────────────────────────────────────────────────

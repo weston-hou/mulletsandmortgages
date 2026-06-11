@@ -1,7 +1,15 @@
 {
-  "name": "Mullets & Mortgages \u2014 Content Pipeline",
+  "name": "Mullets & Mortgages — Content Pipeline",
   "nodes": [
     {
+      "id": "google-drive-trigger",
+      "name": "Google Drive — New Video",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
       "parameters": {
         "pollTimes": {
           "item": [
@@ -18,20 +26,9 @@
         },
         "event": "fileCreated",
         "simplifyOutput": true
-      },
-      "id": "google-drive-trigger",
-      "name": "Google Drive \u2014 New Video",
-      "type": "n8n-nodes-base.googleDriveTrigger",
-      "typeVersion": 1,
-      "position": [
-        240,
-        300
-      ]
+      }
     },
     {
-      "parameters": {
-        "jsCode": "// Extract file metadata from Drive trigger\nconst file = $input.first().json;\nconst fileId = file.id;\nconst fileName = file.name;\nconst mimeType = file.mimeType || 'video/mp4';\n\n// Vizard supports Google Drive links natively as videoType 3\n// File must be publicly shared (anyone with link can view)\nconst driveShareUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;\n\n// Strip extension for clean title\nconst title = fileName.replace(/\\.[^/.]+$/, '');\nconst ext = (fileName.match(/\\.([^.]+)$/) || [])[1] || 'mp4';\n\nreturn [{ json: { fileId, fileName, mimeType, driveShareUrl, title, ext, uploadedAt: new Date().toISOString() } }];"
-      },
       "id": "parse-file",
       "name": "Parse File Metadata",
       "type": "n8n-nodes-base.code",
@@ -39,64 +36,14 @@
       "position": [
         460,
         300
-      ]
+      ],
+      "parameters": {
+        "jsCode": "// Build a Vizard-readable Google Drive share URL from the Drive trigger.\n// The watched folder must be shared 'anyone with the link can view'.\nconst file = $input.first().json;\nconst fileId = file.id;\nconst fileName = file.name || 'untitled';\nconst driveShareUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;\nconst title = fileName.replace(/\\.[^/.]+$/, '');\nreturn [{ json: { fileId, fileName, driveShareUrl, title, uploadedAt: new Date().toISOString() } }];"
+      }
     },
     {
-      "parameters": {
-        "method": "POST",
-        "url": "https://elb.vizard.ai/api/v1/project/create",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "videoUrl",
-              "value": "={{ $json.driveShareUrl }}"
-            },
-            {
-              "name": "videoType",
-              "value": "3"
-            },
-            {
-              "name": "title",
-              "value": "={{ $json.title }}"
-            },
-            {
-              "name": "lang",
-              "value": "en"
-            },
-            {
-              "name": "numOfClips",
-              "value": "10"
-            },
-            {
-              "name": "preferredClipLengths",
-              "value": "={{ [[0,30],[30,60],[60,90],[180,300]] }}"
-            },
-            {
-              "name": "openAiCaption",
-              "value": "true"
-            },
-            {
-              "name": "viralScore",
-              "value": "true"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "vizard-create-project",
-      "name": "Vizard \u2014 Create Clipping Project",
+      "id": "vizard-create",
+      "name": "Vizard — Create Project",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -108,12 +55,28 @@
           "id": "vizard-api-creds",
           "name": "Vizard API"
         }
+      },
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "method": "POST",
+        "url": "https://elb-api.vizard.ai/hvizard-server-front/open-api/v1/project/create",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const TEMPLATE_ID = 'REPLACE_WITH_VIZARD_TEMPLATE_ID'; const body = { lang: 'en', videoUrl: $json.driveShareUrl, videoType: 3, preferLength: [1,2,3,4], maxClipNumber: 10, ratioOfClip: 1, projectName: $json.title }; if (TEMPLATE_ID && TEMPLATE_ID !== 'REPLACE_WITH_VIZARD_TEMPLATE_ID') body.templateId = Number(TEMPLATE_ID); return JSON.stringify(body); })() }}",
+        "options": {}
       }
     },
     {
-      "parameters": {
-        "jsCode": "const response = $input.first().json;\nconst projectId = response?.data?.projectId || response?.projectId;\n\nif (!projectId) {\n  throw new Error('Vizard project creation failed: ' + JSON.stringify(response));\n}\n\nreturn [{ json: { projectId, status: 'processing', createdAt: new Date().toISOString() } }];"
-      },
       "id": "extract-project-id",
       "name": "Extract Project ID",
       "type": "n8n-nodes-base.code",
@@ -121,14 +84,13 @@
       "position": [
         900,
         300
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nconst projectId = r.projectId ?? r.data?.projectId;\nif (!projectId) throw new Error('Vizard create failed: ' + JSON.stringify(r));\nreturn [{ json: { projectId } }];"
+      }
     },
     {
-      "parameters": {
-        "amount": 3,
-        "unit": "minutes"
-      },
-      "id": "wait-for-processing",
+      "id": "wait-initial",
       "name": "Wait 3 Minutes",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
@@ -136,18 +98,15 @@
         1120,
         300
       ],
-      "webhookId": "vizard-wait"
+      "webhookId": "vizard-wait-initial",
+      "parameters": {
+        "amount": 3,
+        "unit": "minutes"
+      }
     },
     {
-      "parameters": {
-        "method": "GET",
-        "url": "=https://elb.vizard.ai/api/v1/project/{{ $json.projectId }}/clips",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
-      },
-      "id": "vizard-poll-status",
-      "name": "Vizard \u2014 Get Clips",
+      "id": "vizard-query",
+      "name": "Vizard — Query Clips",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -159,94 +118,67 @@
           "id": "vizard-api-creds",
           "name": "Vizard API"
         }
+      },
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "method": "GET",
+        "url": "=https://elb-api.vizard.ai/hvizard-server-front/open-api/v1/project/query/{{ $json.projectId }}",
+        "options": {}
       }
     },
     {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true
-          },
-          "conditions": [
-            {
-              "leftValue": "={{ $json.data.status }}",
-              "rightValue": "completed",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ]
-        }
-      },
-      "id": "check-status",
-      "name": "Processing Complete?",
+      "id": "clips-ready",
+      "name": "Clips Ready?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
         1560,
         300
-      ]
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-code-2000",
+              "leftValue": "={{ $json.code }}",
+              "rightValue": 2000,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
     },
     {
-      "parameters": {
-        "amount": 2,
-        "unit": "minutes"
-      },
       "id": "wait-retry",
-      "name": "Wait 2 More Minutes",
+      "name": "Wait 30s & Retry",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
       "position": [
         1560,
-        500
+        520
       ],
-      "webhookId": "vizard-retry-wait"
+      "webhookId": "vizard-wait-retry",
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      }
     },
     {
-      "parameters": {
-        "jsCode": "// Sort clips by viral score, split into format buckets\nconst clips = $input.first().json?.data?.clips || [];\n\nif (clips.length === 0) {\n  throw new Error('No clips returned from Vizard');\n}\n\n// Sort by viral score descending\nconst sorted = [...clips].sort((a, b) => (b.viralScore || 0) - (a.viralScore || 0));\n\n// Bucket by duration\nconst shorts   = sorted.filter(c => c.duration <= 60).slice(0, 3);   // TikTok/Reels/YT Shorts\nconst medium   = sorted.filter(c => c.duration > 60 && c.duration <= 300).slice(0, 2); // YouTube/LinkedIn  \nconst teasers  = sorted.filter(c => c.duration <= 30).slice(0, 2);   // Twitter/X\n\nconst allSelected = [\n  ...shorts.map(c => ({ ...c, formats: ['tiktok', 'instagram_reels', 'youtube_shorts'] })),\n  ...medium.map(c => ({ ...c, formats: ['youtube', 'linkedin'] })),\n  ...teasers.map(c => ({ ...c, formats: ['twitter'] }))\n];\n\nreturn allSelected.map(clip => ({ json: clip }));"
-      },
-      "id": "sort-clips",
-      "name": "Sort & Bucket Clips",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1780,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://elb.vizard.ai/api/v1/clip/publish",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "clipId",
-              "value": "={{ $json.clipId }}"
-            },
-            {
-              "name": "platforms",
-              "value": "={{ JSON.stringify($json.formats) }}"
-            },
-            {
-              "name": "caption",
-              "value": "={{ $json.aiCaption || 'Check out the latest mortgage insights! \ud83c\udfe0 Get your free rate quote \u2192 mulletsandmortgages.com\\n\\n#mortgage #realestate #homebuying #mortgagebroker #firsttimehomebuyer' }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "vizard-publish",
-      "name": "Vizard \u2014 Publish to Socials",
+      "id": "vizard-social-accounts",
+      "name": "Vizard — Get Social Accounts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2000,
+        1780,
         200
       ],
       "credentials": {
@@ -254,22 +186,92 @@
           "id": "vizard-api-creds",
           "name": "Vizard API"
         }
+      },
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "method": "GET",
+        "url": "https://elb-api.vizard.ai/hvizard-server-front/open-api/v1/project/social-accounts",
+        "options": {}
       }
     },
     {
+      "id": "build-publish-tasks",
+      "name": "Build Publish Tasks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        200
+      ],
       "parameters": {
-        "jsCode": "// Aggregate all published clip results\nconst items = $input.all();\nconst results = items.map(i => i.json);\n\nconst published = results.filter(r => r.status === 'published' || r.success);\nconst failed    = results.filter(r => r.status !== 'published' && !r.success);\n\nconst platformLinks = published.map(r => {\n  const platform = r.platform || r.formats?.[0] || 'unknown';\n  const url = r.url || r.postUrl || '';\n  return `${platform}: ${url}`;\n}).join('\\n');\n\nreturn [{\n  json: {\n    totalPublished: published.length,\n    totalFailed: failed.length,\n    platformLinks,\n    summary: `\u2702\ufe0f Mullets & Mortgages \u2014 ${published.length} clips posted!\\n${platformLinks}\\n\\nSource: mulletsandmortgages.com`,\n    timestamp: new Date().toISOString()\n  }\n}];"
+        "jsCode": "// Pick the top clips by viral score, then fan out one publish task per\n// (clip x connected social account). Edit MAX_CLIPS / caption / platform\n// filter here to tune what gets posted.\nconst MAX_CLIPS = 5;\n\nconst query = $('Vizard — Query Clips').first().json;\nconst videos = query.videos || [];\nif (!videos.length) throw new Error('No clips returned from Vizard');\n\nconst selected = [...videos]\n  .sort((a, b) => parseFloat(b.viralScore || '0') - parseFloat(a.viralScore || '0'))\n  .slice(0, MAX_CLIPS);\n\nconst accounts = ($input.first().json.publishAccounts || [])\n  .filter(a => a.status === 'active');\n// To target only some platforms, filter here, e.g.:\n// .filter(a => ['TikTok','Instagram','YouTube'].includes(a.platform));\nif (!accounts.length) throw new Error('No active connected social accounts in Vizard');\n\nconst caption = 'New from Mullets & Mortgages \\uD83C\\uDFE0 Free rate quote \\u2192 mulletsandmortgages.com\\n\\n#mortgage #realestate #homebuying #mortgagebroker #firsttimehomebuyer';\n\nconst tasks = [];\nfor (const c of selected) {\n  for (const a of accounts) {\n    tasks.push({ json: {\n      finalVideoId: c.videoId,\n      socialAccountId: a.id,\n      platform: a.platform,\n      title: c.title,\n      post: caption,\n    } });\n  }\n}\nreturn tasks;"
+      }
+    },
+    {
+      "id": "vizard-publish",
+      "name": "Vizard — Publish Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2220,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vizard-api-creds",
+          "name": "Vizard API"
+        }
       },
-      "id": "aggregate-results",
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "method": "POST",
+        "url": "https://elb-api.vizard.ai/hvizard-server-front/open-api/v1/project/publish-video",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ finalVideoId: $json.finalVideoId, socialAccountId: $json.socialAccountId, post: $json.post, title: $json.title }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "aggregate",
       "name": "Aggregate Results",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2220,
+        2440,
         200
-      ]
+      ],
+      "parameters": {
+        "jsCode": "// publish-video returns { code: 2000 } on success. Align results with the\n// publish tasks by index to report per-platform status.\nconst tasks = $('Build Publish Tasks').all().map(i => i.json);\nconst results = $input.all().map(i => i.json);\n\nconst lines = results.map((r, idx) => {\n  const t = tasks[idx] || {};\n  const ok = r && r.code === 2000;\n  const status = ok ? 'OK' : `FAIL(${r && r.code}${r && r.errMsg ? ':' + r.errMsg : ''})`;\n  return `${t.platform || '?'} \\u2014 ${status}`;\n});\n\nconst published = results.filter(r => r && r.code === 2000).length;\nconst failed = results.length - published;\n\nconst summary = `\\u2702\\uFE0F Mullets & Mortgages \\u2014 ${published} posts published, ${failed} failed.\\n` +\n  lines.join('\\n') + '\\n\\nmulletsandmortgages.com';\n\nreturn [{ json: { totalPublished: published, totalFailed: failed, platformLinks: lines.join('\\n'), summary, timestamp: new Date().toISOString() } }];"
+      }
     },
     {
+      "id": "twilio-notify",
+      "name": "SMS Zach — Content Live",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2660,
+        120
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "twilio-creds",
+          "name": "Twilio"
+        }
+      },
       "parameters": {
         "method": "POST",
         "url": "https://api.twilio.com/2010-04-01/Accounts/REPLACE_TWILIO_ACCOUNT_SID/Messages.json",
@@ -294,23 +296,17 @@
           ]
         },
         "options": {}
-      },
-      "id": "twilio-notify",
-      "name": "SMS Zach \u2014 Content Live",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2440,
-        200
-      ],
-      "credentials": {
-        "httpBasicAuth": {
-          "id": "twilio-creds",
-          "name": "Twilio"
-        }
       }
     },
     {
+      "id": "log-sheets",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2660,
+        300
+      ],
       "parameters": {
         "operation": "append",
         "documentId": {
@@ -333,32 +329,11 @@
           }
         },
         "options": {}
-      },
-      "id": "log-to-sheets",
-      "name": "Log to Google Sheets",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4,
-      "position": [
-        2440,
-        380
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Log error for manual review\nconst error = $input.first().json;\nconsole.error('Pipeline error:', JSON.stringify(error));\nreturn [{ json: { error: true, details: error, timestamp: new Date().toISOString() } }];"
-      },
-      "id": "error-handler",
-      "name": "Error Handler",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2000,
-        500
-      ]
+      }
     }
   ],
   "connections": {
-    "Google Drive \u2014 New Video": {
+    "Google Drive — New Video": {
       "main": [
         [
           {
@@ -373,14 +348,14 @@
       "main": [
         [
           {
-            "node": "Vizard \u2014 Create Clipping Project",
+            "node": "Vizard — Create Project",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Vizard \u2014 Create Clipping Project": {
+    "Vizard — Create Project": {
       "main": [
         [
           {
@@ -406,65 +381,76 @@
       "main": [
         [
           {
-            "node": "Vizard \u2014 Get Clips",
+            "node": "Vizard — Query Clips",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Vizard \u2014 Get Clips": {
+    "Vizard — Query Clips": {
       "main": [
         [
           {
-            "node": "Processing Complete?",
+            "node": "Clips Ready?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Processing Complete?": {
+    "Clips Ready?": {
       "main": [
         [
           {
-            "node": "Sort & Bucket Clips",
+            "node": "Vizard — Get Social Accounts",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Wait 2 More Minutes",
+            "node": "Wait 30s & Retry",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait 2 More Minutes": {
+    "Wait 30s & Retry": {
       "main": [
         [
           {
-            "node": "Vizard \u2014 Get Clips",
+            "node": "Vizard — Query Clips",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Sort & Bucket Clips": {
+    "Vizard — Get Social Accounts": {
       "main": [
         [
           {
-            "node": "Vizard \u2014 Publish to Socials",
+            "node": "Build Publish Tasks",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Vizard \u2014 Publish to Socials": {
+    "Build Publish Tasks": {
+      "main": [
+        [
+          {
+            "node": "Vizard — Publish Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vizard — Publish Video": {
       "main": [
         [
           {
@@ -479,12 +465,10 @@
       "main": [
         [
           {
-            "node": "SMS Zach \u2014 Content Live",
+            "node": "SMS Zach — Content Live",
             "type": "main",
             "index": 0
-          }
-        ],
-        [
+          },
           {
             "node": "Log to Google Sheets",
             "type": "main",
@@ -495,10 +479,9 @@
     }
   },
   "settings": {
-    "executionOrder": "v1",
-    "errorWorkflow": "error-handler"
+    "executionOrder": "v1"
   },
   "meta": {
-    "description": "Zach drops a video in Google Drive \u2192 Vizard AI cuts it into viral clips \u2192 auto-posts to all social platforms \u2192 SMS Zach with links"
+    "description": "Drop one edited video in Google Drive -> Vizard AI cuts it into clips -> top clips auto-publish to connected social accounts -> SMS Zach + log to Sheets. Built against the Vizard open-api (elb-api.vizard.ai)."
   }
 }

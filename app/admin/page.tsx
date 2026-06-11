@@ -46,10 +46,6 @@ interface ContentClip {
   leads_generated?: number;
   conversion_rate?: number;
   ai_suggestions?: string;
-  render_tiktok_url?: string;
-  render_instagram_url?: string;
-  render_youtube_url?: string;
-  render_linkedin_url?: string;
 }
 
 type LeadStage =
@@ -604,7 +600,6 @@ function Dashboard({ adminKey }: { adminKey: string }) {
                           <th className="text-right px-4 py-3 font-medium">Leads</th>
                           <th className="text-right px-4 py-3 font-medium">CVR</th>
                           <th className="text-left px-4 py-3 font-medium">AI Suggestions</th>
-                          <th className="text-left px-4 py-3 font-medium">Renders</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-800/50">
@@ -635,9 +630,6 @@ function Dashboard({ adminKey }: { adminKey: string }) {
                             <td className="px-4 py-3 text-zinc-500 text-xs max-w-xs truncate">
                               {clip.ai_suggestions ?? "—"}
                             </td>
-                            <td className="px-4 py-3">
-                              <RenderStatusCell clip={clip} adminKey={adminKey} />
-                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -652,87 +644,6 @@ function Dashboard({ adminKey }: { adminKey: string }) {
           </>
         )}
       </div>
-    </div>
-  );
-}
-
-// ─── Render status cell ─────────────────────────────────────────────────────
-
-const RENDER_FORMATS = [
-  { key: "render_tiktok_url"    as const, label: "TikTok",    icon: "📱" },
-  { key: "render_instagram_url" as const, label: "Instagram", icon: "📸" },
-  { key: "render_youtube_url"   as const, label: "YouTube",   icon: "▶️" },
-  { key: "render_linkedin_url"  as const, label: "LinkedIn",  icon: "💼" },
-];
-
-function RenderStatusCell({ clip, adminKey }: { clip: ContentClip; adminKey: string }) {
-  const [videoUrl, setVideoUrl]   = useState("");
-  const [rendering, setRendering] = useState(false);
-  const [renderDone, setRenderDone] = useState(false);
-  const [showInput, setShowInput] = useState(false);
-
-  const hasAnyRender = RENDER_FORMATS.some(f => clip[f.key]);
-
-  const handleRender = async () => {
-    if (!videoUrl.trim()) return;
-    setRendering(true);
-    try {
-      const res = await fetch("/api/content/render", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Admin-Key": adminKey },
-        body: JSON.stringify({ clip_id: clip.id, video_url: videoUrl.trim() }),
-      });
-      if (res.ok) { setRenderDone(true); setShowInput(false); }
-    } finally {
-      setRendering(false);
-    }
-  };
-
-  return (
-    <div className="min-w-[160px]">
-      {hasAnyRender ? (
-        <div className="space-y-1">
-          {RENDER_FORMATS.map(({ key, label, icon }) => (
-            clip[key] ? (
-              <a key={key} href={clip[key]!} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-amber-400 hover:underline">
-                <span>{icon}</span> {label}
-              </a>
-            ) : (
-              <span key={key} className="flex items-center gap-1 text-xs text-zinc-600">
-                <span>{icon}</span> {label}
-              </span>
-            )
-          ))}
-        </div>
-      ) : renderDone ? (
-        <span className="text-xs text-green-400">⏳ Rendering…</span>
-      ) : showInput ? (
-        <div className="flex flex-col gap-1">
-          <input
-            type="text"
-            value={videoUrl}
-            onChange={e => setVideoUrl(e.target.value)}
-            placeholder="https://drive.google.com/..."
-            className="text-xs bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-white w-40 focus:outline-none focus:border-amber-400"
-          />
-          <div className="flex gap-1">
-            <button onClick={handleRender} disabled={rendering || !videoUrl.trim()}
-              className="text-xs px-2 py-1 rounded bg-amber-400 text-black font-bold disabled:opacity-40">
-              {rendering ? "⏳" : "Go"}
-            </button>
-            <button onClick={() => setShowInput(false)}
-              className="text-xs px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-zinc-400">
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button onClick={() => setShowInput(true)}
-          className="text-xs px-2 py-1 rounded bg-zinc-800 border border-zinc-700 text-zinc-400 hover:border-amber-400/40 hover:text-white transition-all">
-          🎬 Render formats
-        </button>
-      )}
     </div>
   );
 }
