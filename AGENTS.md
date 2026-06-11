@@ -22,4 +22,15 @@ Every external service (Supabase, Resend, Twilio, Anthropic, Google Drive/Docs/S
 - Email/SMS triggers from API routes are fire-and-forget (the route doesn't block on delivery). See the landing form path: `app/page.tsx` → `app/api/leads/route.ts` + `app/api/rates/quote/route.ts`.
 - Protected API routes and `/admin` gate on `ADMIN_PASSWORD` (cookie); cron/agent routes gate on a `CRON_SECRET` bearer token.
 
+## Testing
+
+- **Unit/integration** (Vitest, jsdom): `npm test` (watch: `npm run test:watch`,
+  coverage: `npm run test:coverage`). Specs are `*.test.ts(x)` colocated with the
+  code. Route-handler tests mock `@/lib/*` with `vi.hoisted` + `vi.mock`.
+- **E2E** (Playwright, mocked APIs via `page.route`): `npm run test:e2e`. Specs
+  live in `e2e/*.spec.ts`. Run `npx playwright install chromium` once first.
+- Test files are excluded from the production `tsconfig.json`; typecheck them with
+  `tsc -p tsconfig.test.json --noEmit`. CI (`.github/workflows/test.yml`) runs
+  lint + both typechecks + unit + e2e on every push/PR to `main`.
+
 See `HANDOFF.md` for the full architecture, data model, and feature walkthrough.
