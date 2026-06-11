@@ -639,8 +639,10 @@ function Dashboard({ adminKey }: { adminKey: string }) {
               )}
             </section>
 
-            {/* ── Video upload ── */}
-            {/* VideoUploadSection removed — Zach uploads directly to Google Drive */}
+            {/* ── Video upload (feeds the Vizard content pipeline) ── */}
+            <div className="mt-10">
+              <VideoUploadSection adminKey={adminKey} />
+            </div>
           </>
         )}
       </div>
@@ -698,7 +700,7 @@ function VideoUploadSection({ adminKey }: { adminKey: string }) {
       <h2 className="text-white font-bold text-lg mb-4">Upload Video</h2>
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-2xl">
         <p className="text-zinc-500 text-sm mb-5">
-          Upload up to 3 camera angles. Files go straight to Google Drive and a content clip entry is created automatically.
+          Upload your edited video. It goes straight to the Vizard intake folder in Google Drive, which kicks off clipping and auto-posting. Each file becomes its own clipping run (up to 3).
         </p>
 
         {/* Slug */}
@@ -715,7 +717,7 @@ function VideoUploadSection({ adminKey }: { adminKey: string }) {
 
         {/* File picker */}
         <div className="mb-4">
-          <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Video files <span className="text-zinc-600">(up to 3 cameras)</span></label>
+          <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Video files <span className="text-zinc-600">(edited video — up to 3)</span></label>
           <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-zinc-700 rounded-xl cursor-pointer hover:border-amber-400/40 transition-colors bg-zinc-800/50">
             <input type="file" multiple accept="video/*" onChange={handleFiles} className="hidden" />
             {files.length === 0 ? (
@@ -728,7 +730,7 @@ function VideoUploadSection({ adminKey }: { adminKey: string }) {
               <div className="text-center px-4">
                 {files.map((f, i) => (
                   <div key={i} className="text-sm text-white">
-                    📹 Cam {i + 1}: <span className="text-zinc-400">{f.name}</span>
+                    📹 Video {i + 1}: <span className="text-zinc-400">{f.name}</span>
                     <span className="text-zinc-600 ml-2">({(f.size / 1024 / 1024).toFixed(1)} MB)</span>
                   </div>
                 ))}

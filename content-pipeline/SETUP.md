@@ -75,6 +75,11 @@ These are the real-world accounts the pipeline needs. Until they exist, it can't
 3. Copy the folder ID from the URL
    (`drive.google.com/drive/folders/THIS_PART`).
 4. Open the **Google Drive — New Video** node → set **Folder to Watch** to that ID.
+5. **Optional (upload from the dashboard):** set the same folder ID as
+   `VIZARD_INTAKE_DRIVE_FOLDER_ID` in the web app's env vars. The admin
+   **Upload Video** form then drops files straight into this folder (and marks
+   them link-readable), so an upload kicks off clipping without opening Drive.
+   Leave it unset to add videos via the Drive UI instead.
 
 ---
 

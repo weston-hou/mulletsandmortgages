@@ -3,7 +3,10 @@
  * POST /api/content/upload
  *
  * Accepts multipart form data with up to 3 video files + metadata.
- * Uploads each file to Google Drive under Mullets & Mortgages/Video Uploads/{slug}/
+ * If VIZARD_INTAKE_DRIVE_FOLDER_ID is set, uploads go straight into that folder
+ * (the one the Vizard n8n workflow watches) and are made link-readable so each
+ * file kicks off a clipping run. Otherwise files land under
+ * Mullets & Mortgages/Video Uploads/{slug}/.
  * Creates a content_clips row in Supabase.
  * Returns the Drive file URLs + clip ID.
  *
@@ -18,7 +21,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
-import { ensureFolders, uploadFileToDrive, type UploadedFile } from "@/lib/google-drive";
+import {
+  ensureFolders,
+  getAccessToken,
+  uploadFileToDrive,
+  makeFileLinkReadable,
+  type UploadedFile,
+} from "@/lib/google-drive";
 
 function isAdmin(req: NextRequest): boolean {
   const key = process.env.ADMIN_PASSWORD;
@@ -73,37 +82,50 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Ensure Drive folders exist
-    const { videos: videosFolderId, token } = await ensureFolders();
+    // When VIZARD_INTAKE_DRIVE_FOLDER_ID is set, upload straight into the folder
+    // the Vizard n8n workflow watches so each file triggers a clipping run.
+    // Otherwise fall back to the dated-subfolder layout under "Video Uploads/".
+    const intakeFolderId = process.env.VIZARD_INTAKE_DRIVE_FOLDER_ID?.trim();
 
-    // Create a subfolder for this campaign slug
-    const createFolderRes = await fetch(
-      "https://www.googleapis.com/drive/v3/files",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: `${new Date().toISOString().slice(0, 10)} — ${slug}`,
-          mimeType: "application/vnd.google-apps.folder",
-          parents: [videosFolderId],
-        }),
-      }
-    );
-    const folderData = await createFolderRes.json() as { id: string };
-    const campaignFolderId = folderData.id;
+    let token: string;
+    let targetFolderId: string;
+
+    if (intakeFolderId) {
+      token = await getAccessToken();
+      targetFolderId = intakeFolderId;
+    } else {
+      const { videos: videosFolderId, token: t } = await ensureFolders();
+      token = t;
+      const createFolderRes = await fetch(
+        "https://www.googleapis.com/drive/v3/files",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: `${new Date().toISOString().slice(0, 10)} — ${slug}`,
+            mimeType: "application/vnd.google-apps.folder",
+            parents: [videosFolderId],
+          }),
+        }
+      );
+      const folderData = await createFolderRes.json() as { id: string };
+      targetFolderId = folderData.id;
+    }
 
     // Upload each file
     const uploaded: UploadedFile[] = [];
     for (let i = 0; i < files.length; i++) {
       const file   = files[i];
-      const label  = files.length > 1 ? `-cam${i + 1}` : "";
+      const label  = files.length > 1 ? `-${i + 1}` : "";
       const ext    = file.name.split(".").pop() ?? "mp4";
       const name   = `${slug}${label}.${ext}`;
       const buffer = Buffer.from(await file.arrayBuffer());
-      const result = await uploadFileToDrive(name, file.type || "video/mp4", buffer, campaignFolderId, token);
+      const result = await uploadFileToDrive(name, file.type || "video/mp4", buffer, targetFolderId, token);
+      // Vizard needs link-readable files to download from Drive.
+      if (intakeFolderId) await makeFileLinkReadable(result.id, token);
       uploaded.push(result);
     }
 
@@ -123,7 +145,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       notes,
       `📁 Drive files (${uploaded.length}):`,
       driveLinks,
-      `📂 Folder: https://drive.google.com/drive/folders/${campaignFolderId}`,
+      `📂 Folder: https://drive.google.com/drive/folders/${targetFolderId}`,
     ].filter(Boolean).join("\n");
 
     await db.contentClips.update(clip.id, { ai_suggestions: fullNotes });
@@ -132,9 +154,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       ok:            true,
       clip_id:       clip.id,
       campaign_slug: slug,
-      folder_url:    `https://drive.google.com/drive/folders/${campaignFolderId}`,
+      folder_url:    `https://drive.google.com/drive/folders/${targetFolderId}`,
       files:         uploaded.map(f => ({ name: f.name, url: f.webViewLink })),
-      message:       `${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded to Drive successfully`,
+      message:       intakeFolderId
+        ? `${uploaded.length} video${uploaded.length > 1 ? "s" : ""} uploaded — Vizard will start clipping shortly`
+        : `${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded to Drive successfully`,
     });
 
   } catch (err) {

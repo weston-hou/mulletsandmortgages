@@ -76,7 +76,7 @@ async function buildJwt(sa: ServiceAccountKey, scope: string): Promise<string> {
 }
 
 /** Exchange JWT for an access token */
-async function getAccessToken(): Promise<string> {
+export async function getAccessToken(): Promise<string> {
   const sa    = getServiceAccount();
   const scope = "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents";
   const jwt   = await buildJwt(sa, scope);
@@ -151,6 +151,15 @@ export async function ensureFolders(): Promise<{
   const docsId   = await ensureFolder(FOLDER_NAMES.documents, rootId, token);
   const signedId = await ensureFolder(FOLDER_NAMES.signed,    docsId, token);
   return { root: rootId, videos: videosId, documents: docsId, signed: signedId, token };
+}
+
+/**
+ * Make a Drive file readable by anyone with the link.
+ * Vizard downloads Google Drive videos (videoType 3) via the public share URL,
+ * so files going into the Vizard intake folder must be link-readable.
+ */
+export async function makeFileLinkReadable(fileId: string, token: string): Promise<void> {
+  await drivePost(`/files/${fileId}/permissions`, { role: "reader", type: "anyone" }, token);
 }
 
 // ─── File upload ──────────────────────────────────────────────────────────────
