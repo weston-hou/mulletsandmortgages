@@ -33,9 +33,13 @@
   "exclude": [
     "node_modules",
     "e2e",
+    "e2e-smoke",
+    "e2e-staging",
     "**/*.test.ts",
     "**/*.test.tsx",
     "playwright.config.ts",
+    "playwright.smoke.config.ts",
+    "playwright.staging.config.ts",
     "vitest.config.mts",
     "vitest.setup.ts"
   ]

@@ -45,3 +45,27 @@ test("landing funnel: fill all three steps and submit to /rates", async ({ page 
   await expect(page).toHaveURL(/\/rates\?.*quoted=1/);
   await expect(page).toHaveURL(/email=jordan%40example\.com/);
 });
+
+test("refinance funnel: amount fields are relabeled and the flow is not blocked", async ({ page }) => {
+  await mockApis(page);
+  await page.goto("/");
+
+  // Step 1 — refinance purpose
+  await page.getByRole("button", { name: /Refinance my current home/ }).click();
+
+  // Step 2 — for a refinance the fields become home value + current loan balance
+  await expect(page.getByText("Estimated home value")).toBeVisible();
+  await expect(page.getByText("Current loan balance")).toBeVisible();
+  await page.getByPlaceholder("450,000").fill("500000"); // home value
+  await page.getByPlaceholder("90,000").fill("300000"); // current loan balance
+  const selects = page.getByRole("combobox");
+  await selects.nth(0).selectOption("Single family home");
+  await selects.nth(1).selectOption("760+");
+  await page.getByRole("button", { name: "No" }).click();
+  await selects.nth(2).selectOption("AZ");
+  await page.getByPlaceholder("85260").fill("85260");
+  await page.getByRole("button", { name: "Next →" }).click();
+
+  // A refinancer reaches the contact step instead of being stuck on step 2.
+  await expect(page.getByRole("heading", { name: /Where do we send your rates/ })).toBeVisible();
+});

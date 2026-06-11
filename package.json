@@ -10,7 +10,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:smoke": "playwright test --config=playwright.smoke.config.ts",
+    "test:staging": "playwright test --config=playwright.staging.config.ts"
   },
   "dependencies": {
     "next": "16.2.6",

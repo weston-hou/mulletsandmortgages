@@ -1,0 +1,32 @@
+name: Post-deploy smoke
+
+# Runs read-only smoke checks against a live deployment. Fires when Vercel
+# reports a successful deployment, or manually with a target URL.
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Base URL to smoke-test"
+        required: true
+        default: "https://mulletsandmortgages.com"
+
+jobs:
+  smoke:
+    name: Smoke
+    # Only run on successful deployments (skip pending/error/queued states).
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Smoke test the deployment
+        run: npm run test:smoke
+        env:
+          CI: "true"
+          SMOKE_BASE_URL: ${{ github.event.inputs.url || github.event.deployment_status.environment_url }}

@@ -170,6 +170,10 @@ export default function Home() {
     "w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3.5 text-white placeholder-zinc-500 text-base transition-all duration-200";
   const selectClass =
     "w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3.5 text-white text-base transition-all duration-200 appearance-none cursor-pointer";
+  // Refinances have no purchase price / down payment, so the two amount fields
+  // become "Estimated home value" + "Current loan balance" instead (matching /apply).
+  const isRefi =
+    form.loanPurpose === "Refinance my current home" || form.loanPurpose === "Cash-out refinance";
   const canAdvanceStep2 =
     form.estimatedPrice && form.creditScore && form.state && form.zip && form.propertyType && form.downPayment && form.veteranStatus;
   const needsPhone = contactPref === "sms" || contactPref === "voice";
@@ -265,7 +269,7 @@ export default function Home() {
               {/* Row: Price + Down payment */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1.5">Home price</label>
+                  <label className="block text-xs text-zinc-400 mb-1.5">{isRefi ? "Estimated home value" : "Home price"}</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">$</span>
                     <input
@@ -283,7 +287,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1.5">Down payment</label>
+                  <label className="block text-xs text-zinc-400 mb-1.5">{isRefi ? "Current loan balance" : "Down payment"}</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">$</span>
                     <input
