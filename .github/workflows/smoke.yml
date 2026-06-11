@@ -14,8 +14,9 @@ on:
 jobs:
   smoke:
     name: Smoke
-    # Only run on successful deployments (skip pending/error/queued states).
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success' }}
+    # Only run on a successful PRODUCTION deploy (Vercel preview URLs sit behind
+    # auth, so smoke can't reach the app there) — or a manual run with a URL.
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Production') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
