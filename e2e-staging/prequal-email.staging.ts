@@ -1,43 +1,22 @@
-import { test, expect, type APIRequestContext } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 
 /**
- * The flagship integrated test: a real pre-qual submission produces a real email,
- * we read it from a capture inbox (Mailosaur), extract the letter link, and follow
- * it in the browser. This is the only tier that proves the whole email->click->letter
- * journey against real Supabase + Resend.
+ * Integrated pre-qual journey against a real STAGING deploy (real Supabase + real
+ * Resend). Option A — no capture inbox: we trigger a real email send and assert
+ * Resend accepts it, then follow the deterministic letter link and confirm the
+ * hosted letter renders from the real database. (That the link is embedded in the
+ * email body is proven separately, fast, by the unit test in app/api/prequal.)
  */
 
-const {
-  STAGING_BASE_URL,
-  STAGING_ADMIN_KEY,
-  MAILOSAUR_API_KEY,
-  MAILOSAUR_SERVER_ID,
-} = process.env;
+const { STAGING_BASE_URL, STAGING_ADMIN_KEY } = process.env;
+const configured = Boolean(STAGING_BASE_URL);
 
-const configured = Boolean(STAGING_BASE_URL && MAILOSAUR_API_KEY && MAILOSAUR_SERVER_ID);
+test.describe("integrated pre-qual journey (staging)", () => {
+  test.skip(!configured, "set STAGING_BASE_URL to run against a staging deploy");
 
-// Unique inbox address on the Mailosaur server — anything@<serverId>.mailosaur.net
-const inbox = () => `prequal-${Date.now()}@${MAILOSAUR_SERVER_ID}.mailosaur.net`;
-
-// Minimal Mailosaur REST client (avoids adding an SDK dependency).
-async function waitForEmail(request: APIRequestContext, sentTo: string) {
-  const res = await request.post(
-    `https://mailosaur.com/api/messages/await?server=${MAILOSAUR_SERVER_ID}`,
-    {
-      headers: { Authorization: `Basic ${Buffer.from(`${MAILOSAUR_API_KEY}:`).toString("base64")}` },
-      data: { sentTo },
-      timeout: 60_000,
-    },
-  );
-  expect(res.ok(), `Mailosaur await failed: ${res.status()}`).toBeTruthy();
-  return res.json();
-}
-
-test.describe("integrated pre-qual email journey", () => {
-  test.skip(!configured, "set STAGING_BASE_URL + MAILOSAUR_API_KEY + MAILOSAUR_SERVER_ID to run");
-
-  test("real pre-qual emails a letter link that renders", async ({ page, request }) => {
-    const email = inbox();
+  test("real pre-qual sends an email and renders the hosted letter", async ({ page, request }) => {
+    // Reserved domain — Resend accepts it but nothing is delivered (we never read it).
+    const email = `prequal-${Date.now()}@example.com`;
 
     // 1. Seed a lead through the real API on staging.
     const leadRes = await request.post(`${STAGING_BASE_URL}/api/leads`, {
@@ -50,31 +29,30 @@ test.describe("integrated pre-qual email journey", () => {
         preferredContact: "email",
       },
     });
-    expect(leadRes.ok()).toBeTruthy();
+    expect(leadRes.ok(), "lead creation should succeed").toBeTruthy();
     const { id: leadId } = await leadRes.json();
 
-    // 2. Run the real pre-qual engine -> sends the real email via Resend.
+    // 2. Run the real DTI engine -> real Resend send. A 200 means the email was
+    //    built and accepted by Resend (sendEmail would throw otherwise).
     const prequalRes = await request.post(`${STAGING_BASE_URL}/api/prequal`, {
       data: { lead_id: leadId, grossMonthlyIncome: 12000, requestedLoanAmount: 300000 },
     });
-    expect(prequalRes.ok()).toBeTruthy();
+    expect(prequalRes.ok(), "prequal incl. real email send should succeed").toBeTruthy();
+    const prequal = await prequalRes.json();
+    expect(prequal.approved).toBe(true);
+    expect(prequal.letterUrl).toContain(`/prequal/letter/${leadId}`);
 
-    // 3. Read the email from the capture inbox and extract the letter link.
-    const message = await waitForEmail(request, email);
-    const letterLink: string | undefined = (message.html?.links ?? []).map((l: { href: string }) => l.href)
-      .find((href: string) => href.includes(`/prequal/letter/${leadId}`));
-    expect(letterLink, "email should contain the letter link").toBeTruthy();
-
-    // 4. Follow the link like a borrower would — the hosted letter must render.
-    await page.goto(letterLink!);
+    // 3. Follow the deterministic link the email carries — the hosted letter must
+    //    render from the real (test) database.
+    await page.goto(`${STAGING_BASE_URL}/prequal/letter/${leadId}`);
     await expect(page.getByText(/pre-qualified/i)).toBeVisible();
     await expect(page.getByText("Stage Tester")).toBeVisible();
 
-    // 5. Best-effort cleanup of the test lead.
+    // 4. Best-effort cleanup of the test lead.
     if (STAGING_ADMIN_KEY) {
-      await request.delete(`${STAGING_BASE_URL}/api/leads/${leadId}`, {
-        headers: { "X-Admin-Key": STAGING_ADMIN_KEY },
-      }).catch(() => {});
+      await request
+        .delete(`${STAGING_BASE_URL}/api/leads/${leadId}`, { headers: { "X-Admin-Key": STAGING_ADMIN_KEY } })
+        .catch(() => {});
     }
   });
 });
