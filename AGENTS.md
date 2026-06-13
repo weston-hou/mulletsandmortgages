@@ -29,6 +29,11 @@ Every external service (Supabase, Resend, Twilio, Anthropic, Google Drive/Docs/S
   code. Route-handler tests mock `@/lib/*` with `vi.hoisted` + `vi.mock`.
 - **E2E** (Playwright, mocked APIs via `page.route`): `npm run test:e2e`. Specs
   live in `e2e/*.spec.ts`. Run `npx playwright install chromium` once first.
+- **Post-deploy smoke** (read-only, against a live URL): `npm run test:smoke`
+  (`e2e-smoke/*.smoke.ts`). `.github/workflows/smoke.yml` runs it after deploys.
+- **Integrated/staging** (real services + capture inbox, the genuine
+  email→click→letter test): `npm run test:staging` (`e2e-staging/`, see its
+  README). Self-skips without the staging/Mailosaur env vars.
 - Test files are excluded from the production `tsconfig.json`; typecheck them with
   `tsc -p tsconfig.test.json --noEmit`. CI (`.github/workflows/test.yml`) runs
   lint + both typechecks + unit + e2e on every push/PR to `main`.

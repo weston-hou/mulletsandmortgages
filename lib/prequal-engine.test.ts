@@ -122,6 +122,37 @@ describe("runPrequalEngine — under-qualified", () => {
   });
 });
 
+describe("runPrequalEngine — refinance excludes the current mortgage", () => {
+  // Regression for the refinance double-count bug: a refi's new loan replaces the
+  // existing mortgage, so the current payment must not count against the DTI budget.
+  const base = input({
+    grossMonthlyIncome: 8_000,
+    debts: { ...NO_DEBTS, currentMortgage: 2_000 },
+    requestedLoanAmount: 250_000,
+  });
+
+  it("counts the current mortgage as debt for a purchase", () => {
+    const r = runPrequalEngine({ ...base, loanPurpose: "Purchase a home" });
+    expect(r.totalMonthlyDebt).toBe(2_000);
+  });
+
+  it("excludes the current mortgage for a refinance", () => {
+    const r = runPrequalEngine({ ...base, loanPurpose: "Refinance my current home" });
+    expect(r.totalMonthlyDebt).toBe(0);
+  });
+
+  it("also excludes it for a cash-out refinance", () => {
+    const r = runPrequalEngine({ ...base, loanPurpose: "Cash-out refinance" });
+    expect(r.totalMonthlyDebt).toBe(0);
+  });
+
+  it("gives a refinancer a larger housing budget than the same purchase borrower", () => {
+    const purchase = runPrequalEngine({ ...base, loanPurpose: "Purchase a home" });
+    const refi = runPrequalEngine({ ...base, loanPurpose: "Refinance my current home" });
+    expect(refi.maxMonthlyPayment).toBeGreaterThan(purchase.maxMonthlyPayment);
+  });
+});
+
 describe("formatters", () => {
   it("formats whole-dollar currency", () => {
     expect(formatCurrency(643_000)).toBe("$643,000");

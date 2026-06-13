@@ -69,10 +69,16 @@ export function maxLoanAmount(maxMonthlyPayment: number, annualRatePct: number, 
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
 export function runPrequalEngine(input: PrequalInput): PrequalResult {
-  const { grossMonthlyIncome, debts, requestedLoanAmount, creditScore } = input;
+  const { grossMonthlyIncome, debts, requestedLoanAmount, creditScore, loanPurpose } = input;
 
+  // On a refinance the new loan replaces the existing mortgage, so that payment
+  // goes away at closing — don't count it as ongoing debt. (The back-solved
+  // assumed payment below already represents the post-refi housing cost; counting
+  // both would underwrite the borrower as paying two mortgages at once.)
+  const isRefi = /refinance/i.test(loanPurpose ?? "");
+  const housingDebt = isRefi ? 0 : debts.currentMortgage;
   const totalMonthlyDebt =
-    debts.carLoan + debts.studentLoan + debts.currentMortgage + debts.otherDebt;
+    debts.carLoan + debts.studentLoan + housingDebt + debts.otherDebt;
 
   // Hard declines
   if (creditScore < MIN_CREDIT_SCORE) {

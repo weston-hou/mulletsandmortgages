@@ -77,6 +77,17 @@ describe("POST /api/rates/quote", () => {
     expect(sent.html).toContain("6.000%");
   });
 
+  it("treats the second amount field as the loan balance for a refinance", async () => {
+    mockFetch(qqResponse([{ name: "Conforming 30 Yr Fixed", rate: 6.5, price: 99.5 }]));
+    const res = await POST(
+      req({ ...validBody, purpose: "Refinance my current home", price: "$500,000", downPayment: "$300,000" }),
+    );
+    expect(res.status).toBe(200);
+    // Loan amount = current balance ($300k), NOT price − down ($200k). It flows
+    // into the pre-qual prefill link embedded in the email.
+    expect(sendEmail.mock.calls[0][0].html).toContain("requestedLoanAmount=300000");
+  });
+
   it("returns 500 when the QuickQuote API errors", async () => {
     mockFetch("upstream boom", false, 502);
     const res = await POST(req(validBody));

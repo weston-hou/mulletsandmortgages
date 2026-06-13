@@ -205,7 +205,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const price      = parseAmount(priceStr);
     const downPayment = parseAmount(downStr);
-    const loanAmt    = Math.max(price - downPayment, 0);
+    // For a refinance the second amount field is the current loan balance, not a
+    // down payment — use it directly as the loan amount (price is the home value).
+    const isRefi     = /refinance/i.test(purpose);
+    const loanAmt    = isRefi ? downPayment : Math.max(price - downPayment, 0);
 
     // Map form values to QQ API values
     const qqPayload = {
@@ -217,7 +220,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         occupancy:         OCCUPANCY_MAP[purpose]         ?? "2",
         propertyType:      PROPERTY_TYPE_MAP[propertyType] ?? "115",
         purchasePrice:     price,
-        downPayment:       downPayment,
+        downPayment:       isRefi ? 0 : downPayment,
         loanAmount:        loanAmt,
         state:             STATE_MAP[state.toUpperCase()]  ?? STATE_MAP["AZ"],
         zipcode:           zip,

@@ -1,0 +1,30 @@
+name: Integrated e2e (staging)
+
+# Real-services integration tests against a staging deploy + capture inbox.
+# Runs nightly and on demand. The tests self-skip if the secrets aren't set,
+# so this is safe to keep enabled before the staging infra exists.
+on:
+  schedule:
+    - cron: "0 8 * * *" # 08:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  staging:
+    name: Staging integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run integrated e2e
+        run: npm run test:staging
+        env:
+          CI: "true"
+          STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+          STAGING_ADMIN_KEY: ${{ secrets.STAGING_ADMIN_KEY }}
+          MAILOSAUR_API_KEY: ${{ secrets.MAILOSAUR_API_KEY }}
+          MAILOSAUR_SERVER_ID: ${{ secrets.MAILOSAUR_SERVER_ID }}

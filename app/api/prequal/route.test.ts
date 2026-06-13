@@ -1,20 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-const { getById, update, convInsert, sendEmail, buildPrequalEmailHtml, renderPrequalLetter } =
-  vi.hoisted(() => ({
-    getById: vi.fn(),
-    update: vi.fn(),
-    convInsert: vi.fn(),
-    sendEmail: vi.fn(),
-    buildPrequalEmailHtml: vi.fn(() => "<email>"),
-    renderPrequalLetter: vi.fn(() => "<letter>"),
-  }));
+const { getById, update, convInsert, sendEmail, renderPrequalLetter } = vi.hoisted(() => ({
+  getById: vi.fn(),
+  update: vi.fn(),
+  convInsert: vi.fn(),
+  sendEmail: vi.fn(),
+  renderPrequalLetter: vi.fn(() => "<letter>"),
+}));
 
 vi.mock("@/lib/supabase", () => ({
   db: { leads: { getById, update }, conversations: { insert: convInsert } },
 }));
-vi.mock("@/lib/email", () => ({ sendEmail, buildPrequalEmailHtml }));
+// Keep the REAL buildPrequalEmailHtml so we verify the email actually carries
+// the working letter link; only stub the network send.
+vi.mock("@/lib/email", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/email")>()),
+  sendEmail,
+}));
 vi.mock("@/lib/documents", () => ({ renderPrequalLetter }));
 
 import { POST } from "./route";
@@ -76,6 +79,9 @@ describe("POST /api/prequal", () => {
     // approval email subject signals the letter is ready
     expect(sendEmail).toHaveBeenCalledTimes(1);
     expect(sendEmail.mock.calls[0][0].subject).toMatch(/ready/i);
+    // The emailed letter link is the deterministic /prequal/letter/{lead_id} URL —
+    // this is the "click the link in the email" step, verified without a real inbox.
+    expect(sendEmail.mock.calls[0][0].html).toContain("/prequal/letter/lead_1");
     // lead is moved to the pre_qual stage
     const completeUpdate = update.mock.calls.find((c) => c[1]?.prequal_complete);
     expect(completeUpdate?.[1].stage).toBe("pre_qual");
