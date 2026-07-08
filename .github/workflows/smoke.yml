@@ -30,4 +30,7 @@ jobs:
         run: npm run test:smoke
         env:
           CI: "true"
-          SMOKE_BASE_URL: ${{ github.event.inputs.url || github.event.deployment_status.environment_url }}
+          # deployment_status.environment_url is the deployment-specific
+          # *.vercel.app URL, which sits behind Vercel deployment protection
+          # (302 → SSO), so smoke must hit the public production domain.
+          SMOKE_BASE_URL: ${{ github.event.inputs.url || 'https://mulletsandmortgages.com' }}
