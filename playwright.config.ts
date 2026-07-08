@@ -19,6 +19,8 @@ export default defineConfig({
   webServer: {
     // Production build in CI for realism; fast dev server locally.
     command: process.env.CI ? "npm run build && npm run start" : "npm run dev",
+    // The site ships hibernated (see proxy.ts); e2e tests the real app.
+    env: { ...process.env, SITE_HIBERNATED: "0" } as Record<string, string>,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
