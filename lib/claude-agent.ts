@@ -7,6 +7,7 @@
 
 import type { Lead, Conversation } from "@/lib/supabase";
 import type { ScriptConfig, PrequalFields } from "@/lib/scripts";
+import { LICENSED_STATES_SENTENCE } from "@/lib/licensing";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ function buildSystemPrompt(
       : "All pre-qual fields collected! 🎉";
 
   return `You are the AI assistant for Zach Boyko at Mullets & Mortgages (mulletsandmortgages.com).
-Zach is a licensed mortgage broker (NMLS #2004025) working with 150+ lenders across 48 states.
+Zach is a licensed mortgage broker (NMLS #2004025) working with 150+ lenders, licensed in ${LICENSED_STATES_SENTENCE}.
 
 ## Your role
 You help mortgage leads get pre-qualified via SMS. You are NOT Zach — you are his assistant.

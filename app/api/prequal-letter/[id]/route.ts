@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase";
+import { LICENSED_STATES_SENTENCE } from "@/lib/licensing";
 
 function isAdmin(req: NextRequest): boolean {
   const adminKey = process.env.ADMIN_PASSWORD;
@@ -383,7 +384,7 @@ function renderLetter(lead: {
       This pre-qualification letter does not constitute a loan commitment or lock-in of any interest rate or program.
       All loan applications are subject to credit approval, satisfactory appraisal, title search, and compliance with
       all applicable laws and regulations. This letter is not an advertisement for credit as defined by Regulation Z.
-      BrokerBoyko LLC is licensed in Arizona and other states. Equal Housing Lender.
+      BrokerBoyko LLC is licensed in ${LICENSED_STATES_SENTENCE}. Equal Housing Lender.
     </div>
 
   </div>

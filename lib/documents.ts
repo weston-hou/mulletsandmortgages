@@ -12,6 +12,8 @@
  * Without it, a self-hosted "click-to-sign" flow is used instead.
  */
 
+import { LICENSED_STATES_SENTENCE } from "@/lib/licensing";
+
 export type DocumentType = "consent_to_contact" | "loan_disclosure" | "prequal_letter";
 
 export interface DocumentRecipient {
@@ -388,7 +390,7 @@ export function renderPrequalLetter(ctx: PrequalLetterContext): string {
 
     <div class="footer">
       Equal Housing Lender. This pre-qualification is based solely on information provided by the applicant and has not been verified.
-      BrokerBoyko LLC is a licensed mortgage brokerage. NMLS #2380533. Licensed in ${ctx.state}.
+      BrokerBoyko LLC is a licensed mortgage brokerage. NMLS #2380533. Licensed in ${LICENSED_STATES_SENTENCE}.
       This letter expires on ${ctx.expiryDate}.
     </div>
   </div>
