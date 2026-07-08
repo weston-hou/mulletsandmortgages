@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { track } from "@/lib/analytics";
+import { LICENSED_STATES } from "@/lib/licensing";
 
 import type { RateCard } from "@/app/api/rates/route";
 
@@ -278,7 +279,7 @@ function RatesContent() {
         <div className="grid grid-cols-3 gap-4 text-center mb-8">
           {[
             { stat: "150+", label: "Lenders shopped" },
-            { stat: "48", label: "States covered" },
+            { stat: `${LICENSED_STATES.length}`, label: "States covered" },
             { stat: "No pull", label: "Soft inquiry only" },
           ].map(({ stat, label }) => (
             <div key={stat}>

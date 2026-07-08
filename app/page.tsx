@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { captureTrackingContext, getTrackingContext, track, identify } from "@/lib/analytics";
+import { LICENSED_STATES, LICENSED_STATE_ABBRS_SHORT } from "@/lib/licensing";
 
 const LOAN_PURPOSES = [
   { label: "Purchase a home", icon: "🏠" },
@@ -200,7 +201,7 @@ export default function Home() {
           <span className="text-zinc-700">|</span>
           <span>150+ Lenders</span>
           <span className="text-zinc-700">|</span>
-          <span>All 48 States</span>
+          <span>Licensed in {LICENSED_STATES.length} States</span>
         </div>
       </nav>
 
@@ -519,7 +520,7 @@ export default function Home() {
           <div className="grid grid-cols-3 gap-4 text-center">
             {[
               { stat: "150+", label: "Lenders shopped for you" },
-              { stat: "48 States", label: "Licensed across the lower 48" },
+              { stat: `${LICENSED_STATES.length} States`, label: `Licensed in ${LICENSED_STATE_ABBRS_SHORT}` },
               { stat: "No BS", label: "Honest advice, every time" },
             ].map(({ stat, label }) => (
               <div key={stat}>
