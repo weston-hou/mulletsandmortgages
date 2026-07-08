@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Mullets & Mortgages — Business in the Front, Savings in the Back",
   description:
-    "Get a free mortgage rate quote in 60 seconds. Zach Boyko, independent mortgage broker — 150+ lenders, lower 48 states. Business up front, savings in the back.",
+    "Get a free mortgage rate quote in 60 seconds. Zach Boyko, independent mortgage broker — 150+ lenders, licensed in AZ, CA, TX, ID, PA, OH & FL. Business up front, savings in the back.",
   openGraph: {
     title: "Mullets & Mortgages",
     description: "Business in the front, savings in the back. Get your free rate quote now.",

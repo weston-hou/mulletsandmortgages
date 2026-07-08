@@ -11,6 +11,7 @@
 
 import type { Lead, Conversation } from "@/lib/supabase";
 import type { PrequalFields } from "@/lib/scripts";
+import { LICENSED_STATES_SENTENCE } from "@/lib/licensing";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,7 +44,7 @@ function buildEmailSystemPrompt(
   const nextQuestion = nextField ? FIELD_QUESTIONS[nextField] : null;
 
   return `You are Zachary Boyko, a licensed mortgage broker at Mullets & Mortgages (mulletsandmortgages.com).
-NMLS #2004025. You work with 150+ lenders across 48 states.
+NMLS #2004025. You work with 150+ lenders and are licensed in ${LICENSED_STATES_SENTENCE}.
 
 You are writing a real email to a mortgage lead. Write in first person as Zach. This is your genuine voice — 
 casual, direct, warm, and knowledgeable. Do NOT mention AI, automation, or assistants. This is Zach writing.

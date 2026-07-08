@@ -18,6 +18,7 @@
 
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { LICENSED_STATES_SENTENCE } from "@/lib/licensing";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -765,7 +766,7 @@ function ApplyPageInner() {
       <footer className="border-t border-zinc-800/50 px-6 py-6 mt-8">
         <div className="max-w-lg mx-auto text-center text-xs text-zinc-600 leading-relaxed">
           Zachary Boyko · NMLS #2004025 · BrokerBoyko LLC · NMLS #2380533<br />
-          Equal Housing Lender · Licensed in Arizona<br />
+          Equal Housing Lender · Licensed in {LICENSED_STATES_SENTENCE}<br />
           <a href="/privacy" className="text-zinc-500 hover:text-zinc-300 underline">Privacy Policy</a>
           {" · "}
           <a href="/terms" className="text-zinc-500 hover:text-zinc-300 underline">Terms</a>
