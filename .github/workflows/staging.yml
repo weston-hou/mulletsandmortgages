@@ -4,8 +4,11 @@ name: Integrated e2e (staging)
 # Runs nightly and on demand. The tests self-skip if the secrets aren't set,
 # so this is safe to keep enabled before the staging infra exists.
 on:
-  schedule:
-    - cron: "0 8 * * *" # 08:00 UTC daily
+  # Nightly schedule paused while the site is hibernated (see proxy.ts) —
+  # a hibernated deploy serves the contact card, so the funnel tests can't run.
+  # Restore the schedule block when the site wakes up:
+  #   schedule:
+  #     - cron: "0 8 * * *" # 08:00 UTC daily
   workflow_dispatch:
 
 jobs:
